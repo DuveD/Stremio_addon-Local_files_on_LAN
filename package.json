@@ -1,0 +1,14 @@
+{
+  "name": "local-addon",
+  "version": "1.0.0",
+  "description": "Addon local para Stremio con series desde el PC",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^4.21.2"
+  }
+}
