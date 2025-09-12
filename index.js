@@ -1,43 +1,45 @@
-const express = require("express");
+// Módulos nativos
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-require('dotenv').config();
+
+// Módulos de terceros
+require("dotenv").config();
+const express = require("express");
 const ffmpeg = require("fluent-ffmpeg");
 ffmpeg.setFfprobePath("ffprobe");
+
+// Módulos locales
+const utilidadesLog = require("./UtilidadesLog.js").default;
 
 const app = express();
 const SERIES_MAP_FILE = path.join(__dirname, "series_map.json");
 
 // Función para cargar variables de entorno con manejo de errores.
 function cargarVariableDeEntorno(nombre, valorPorDefecto) {
-  if (!process.env[nombre]) { 
-    if (valorPorDefecto !== undefined) {
-      console.warn(`[${getLogTime()}][WARN] La variable de entorno ${nombre} no está definida. Se usará el valor por defecto: ${valorPorDefecto}.`);
-      return valorPorDefecto;
-    }
-    else {
-      console.error(`[${getLogTime()}][ERROR] Debes definir la variable PORT archivo de variables de entorno '.env'.`);
-      process.exit(1);
-    }
-  }
-  else {
-    return process.env[nombre];
-  }
+	if (!process.env[nombre]) {
+		if (valorPorDefecto !== undefined) {
+			utilidadesLog.logWarn(
+				`La variable de entorno ${nombre} no está definida. Se usará el valor por defecto: ${valorPorDefecto}.`
+			);
+			return valorPorDefecto;
+		} else {
+			utilidadesLog.logError(
+				`Debes definir la variable PORT archivo de variables de entorno '.env'.`
+			);
+			process.exit(1);
+		}
+	} else {
+		return process.env[nombre];
+	}
 }
 
 // Cargamos variables de entorno
 const CONTENT_DIR = cargarVariableDeEntorno("CONTENT_DIR");
 const PORT = cargarVariableDeEntorno("PORT");
 
-// Función para obtener y formatear fecha y hora.
-function getLogTime() {
-	const now = new Date();
-	return now.toISOString().replace("T", " ").substring(0, 19);
-}
-
 // FUnción para obtener IP Local.
-function getLocalIP() {
+function obtenerIPLocal() {
 	const nets = os.networkInterfaces();
 
 	for (const name of Object.keys(nets)) {
@@ -49,7 +51,7 @@ function getLocalIP() {
 	return "127.0.0.1";
 }
 
-const localIP = getLocalIP();
+const localIP = obtenerIPLocal();
 
 function formatearTamano(bytes) {
 	if (bytes === 0) return "0.00 B";
@@ -85,17 +87,13 @@ function loadSeriesMap() {
 		if (fs.existsSync(SERIES_MAP_FILE)) {
 			SERIES_MAP = JSON.parse(fs.readFileSync(SERIES_MAP_FILE, "utf8"));
 			var nEntradas = Object.keys(SERIES_MAP).length;
-			console.log(
-				`[${getLogTime()}][INFO] SERIES_MAP actualizado: ${nEntradas} entradas.`
-			);
+			utilidadesLog.logInfo(`SERIES_MAP actualizado: ${nEntradas} entradas.`);
 		} else {
-			console.warn(`[${getLogTime()}][WARN] No existe ${SERIES_MAP_FILE}.`);
+			utilidadesLog.logWarn(`No existe ${SERIES_MAP_FILE}.`);
 			SERIES_MAP = {};
 		}
 	} catch (err) {
-		console.error(
-			`[${getLogTime()}][ERROR] Falló la carga de ${SERIES_MAP_FILE}: ${err}`
-		);
+		utilidadesLog.logError(`Falló la carga de ${SERIES_MAP_FILE}: ${err}`);
 		SERIES_MAP = {};
 	}
 }
@@ -105,7 +103,7 @@ loadSeriesMap();
 
 // Buscar episodios por carpeta
 function findEpisodes(folder) {
-	const showPath = path.join(BASE_DIR, folder);
+	const showPath = path.join(CONTENT_DIR, folder);
 	if (!fs.existsSync(showPath)) return [];
 
 	const episodes = [];
@@ -148,8 +146,8 @@ app.use((req, res, next) => {
 
 // Middleware logs
 app.use((req, res, next) => {
-  const formatedUrl = decodeURIComponent(req.url);
-	console.log(`[${getLogTime()}][INFO][REQUEST] ${req.method} ${formatedUrl}`);
+	const formatedUrl = decodeURIComponent(req.url);
+	utilidadesLog.logInfo(`[REQUEST] ${req.method} ${formatedUrl}`);
 	next();
 });
 
@@ -169,7 +167,7 @@ const manifest = {
 };
 
 app.get("/manifest.json", (req, res) => {
-	console.log(`[${getLogTime()}][INFO] Se solicitó el manifest`);
+	utilidadesLog.logInfo(`Se solicitó el manifest`);
 	res.setHeader("Content-Type", "application/json");
 	res.end(JSON.stringify(manifest));
 });
@@ -177,8 +175,8 @@ app.get("/manifest.json", (req, res) => {
 // Endpoint de streams
 app.get("/stream/:type/:id.json", async (req, res) => {
 	const { type, id } = req.params;
-	console.log(
-		`[${getLogTime()}][INFO][REQUEST] Request de stream para ${type} con id: ${id}`
+	utilidadesLog.logInfo(
+		`[REQUEST] Request de stream para ${type} con id: ${id}`
 	);
 
 	let streams = [];
@@ -192,20 +190,20 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 			(f) => SERIES_MAP[f] === imdbId
 		);
 		if (!folder) {
-			console.warn(
-				`[${getLogTime()}][WARNING][REQUEST] IMDb ID ${imdbId} no encontrado. Intentando recargar series_map.json...`
+			utilidadesLog.logWarn(
+				`[REQUEST] IMDb ID ${imdbId} no encontrado. Intentando recargar series_map.json...`
 			);
 			loadSeriesMap();
 			folder = Object.keys(SERIES_MAP).find((f) => SERIES_MAP[f] === imdbId);
 		}
 
 		if (!folder) {
-			console.warn(
-				`[${getLogTime()}][WARNING][REQUEST] IMDb ID ${imdbId} no encontrado en series_map.json`
+			utilidadesLog.logWarn(
+				`[REQUEST] IMDb ID ${imdbId} no encontrado en series_map.json`
 			);
 			return res
 				.status(404)
-				.json({ error: `IMDb ID ${imdbId} no encontrado en series_map.json.` });
+				.json({ error: `IMDb ID ${imdbId} no encontrado en series_map.json.`});
 		} else {
 			const episodes = findEpisodes(folder);
 			const ep = episodes.find(
@@ -228,24 +226,20 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 						)}`,
 					});
 
-					console.log(
-						`[${getLogTime()}][INFO][REQUEST] Episodio encontrado: ${
-							ep.file
-						} (${resolucion}, ${tamano})`
+					utilidadesLog.logInfo(
+						`[REQUEST] Episodio encontrado: ${ep.file} (${resolucion}, ${tamano})`
 					);
 				} catch (err) {
-					console.error(
-						`[${getLogTime()}][ERROR][REQUEST] No ha podido procesar el archivo ${
-							ep.file
-						}: ${err}`
+					utilidadesLog.logError(
+						`[REQUEST] No ha podido procesar el archivo ${ep.file}: ${err}`
 					);
 					return res
 						.status(404)
-						.json({ error: `No se pudo procesar el archivo ${ep.file}.` });
+						.json({ error: `No se pudo procesar el archivo ${ep.file}.`});
 				}
 			} else {
-				console.warn(
-					`[${getLogTime()}][WARNING][REQUEST] No se encontró el episodio S${season}E${episode} en la carpeta "${folder}"`
+				utilidadesLog.logWarn(
+					`[REQUEST] No se encontró el episodio S${season}E${episode} en la carpeta "${folder}"`
 				);
 				return res.status(404).json({
 					error: `Episodio S${season}E${episode} no encontrado en el servidor.`,
@@ -273,10 +267,10 @@ app.get("/file/:filePath", (req, res) => {
 		const start = parseInt(parts[0], 10);
 		const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
 		const chunkSize = end - start + 1;
-    const fileName = path.basename(filePath);
-    
-		console.log(
-			`[${getLogTime()}][INFO][REQUEST-RANGE] ${fileName} -> ${start}-${end} / ${fileSize} (${chunkSize} bytes)`
+		const fileName = path.basename(filePath);
+
+		utilidadesLog.logInfo(
+			`[REQUEST-RANGE] ${fileName} -> ${start}-${end} / ${fileSize} (${chunkSize} bytes)`
 		);
 
 		const file = fs.createReadStream(filePath, { start, end });
@@ -294,8 +288,8 @@ app.get("/file/:filePath", (req, res) => {
 
 		// Log cuando termina o se corta el stream
 		req.on("close", () => {
-			console.log(
-				`[${getLogTime()}][INFO][REQUEST-CLOSE] Cliente canceló chunk en ${path.basename(
+			utilidadesLog.logInfo(
+				`[REQUEST-CLOSE] Cliente canceló chunk en ${path.basename(
 					filePath
 				)} (${start}-${end})`
 			);
@@ -303,16 +297,16 @@ app.get("/file/:filePath", (req, res) => {
 
 		// Log al etectar cancelaci��n (ej. si el usuario salta en la reproducci��n)
 		req.on("aborted", () => {
-			console.log(
-				`[${getLogTime()}][INFO][REQUEST-ABORTED] Cliente canceló chunk en ${path.basename(
+			utilidadesLog.logInfo(
+				`[REQUEST-ABORTED] Cliente canceló chunk en ${path.basename(
 					filePath
 				)} (${start}-${end})`
 			);
 			file.destroy();
 		});
 	} else {
-		console.log(
-			`[${getLogTime()}][INFO][REQUEST-FULL] Sirviendo archivo completo: ${path.basename(
+		utilidadesLog.logInfo(
+			`[REQUEST-FULL] Sirviendo archivo completo: ${path.basename(
 				filePath
 			)} (${fileSize} bytes)`
 		);
@@ -330,10 +324,10 @@ app.get("/file/:filePath", (req, res) => {
 
 // Iniciar servidor en todas las interfaces
 app.listen(PORT, "0.0.0.0", () => {
-	console.log(
-		`[${getLogTime()}][INFO] Addon corriendo en http://localhost:${PORT}/manifest.json`
+	utilidadesLog.logInfo(
+		`Addon corriendo en http://localhost:${PORT}/manifest.json`
 	);
-	console.log(
-		`[${getLogTime()}][INFO] IP LAN accesible: http://${localIP}:${PORT}/manifest.json`
+	utilidadesLog.logInfo(
+		`IP LAN accesible: http://${localIP}:${PORT}/manifest.json`
 	);
 });
