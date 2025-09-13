@@ -12,6 +12,21 @@ ffmpeg.setFfprobePath("ffprobe");
 // Módulos locales
 const utilidadesLog = require("./UtilidadesLog.js");
 
+// Manifest mínimo para Stremio
+const manifest = {
+	id: "org.localaddon.series",
+	version: "2.0.1",
+	name: "Local",
+	description: "Sirve episodios de series almacenados en local.",
+	resources: ["stream"],
+	types: ["series"],
+	idPrefixes: ["tt"],
+	behaviorHints: {
+		configurable: false,
+		configurationRequired: false,
+	},
+};
+
 const app = express();
 const SERIES_MAP_FILE = path.join(__dirname, "series_map.json");
 
@@ -150,21 +165,6 @@ app.use((req, res, next) => {
 	utilidadesLog.logInfo(`[REQUEST] ${req.method} ${formatedUrl}`);
 	next();
 });
-
-// Manifest mínimo para Stremio
-const manifest = {
-	id: "org.localaddon.series",
-	version: "1.0.0",
-	name: "Local",
-	description: "Sirve episodios de series almacenados en local.",
-	resources: ["stream"],
-	types: ["series"],
-	idPrefixes: ["tt"],
-	behaviorHints: {
-		configurable: false,
-		configurationRequired: false,
-	},
-};
 
 app.get("/manifest.json", (req, res) => {
 	utilidadesLog.logInfo(`Se solicitó el manifest`);
