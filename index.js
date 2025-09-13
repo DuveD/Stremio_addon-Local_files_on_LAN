@@ -10,7 +10,7 @@ const ffmpeg = require("fluent-ffmpeg");
 ffmpeg.setFfprobePath("ffprobe");
 
 // Módulos locales
-const utilidadesLog = require("./UtilidadesLog.js").default;
+const utilidadesLog = require("./UtilidadesLog.js");
 
 const app = express();
 const SERIES_MAP_FILE = path.join(__dirname, "series_map.json");
