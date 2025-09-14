@@ -8,9 +8,11 @@ require("dotenv").config();
 const express = require("express");
 const ffmpeg = require("fluent-ffmpeg");
 ffmpeg.setFfprobePath("ffprobe");
+const { execFile } = require("child_process");
 
 // Módulos locales
 const utilidadesLog = require("./UtilidadesLog.js");
+const utilidadesString = require("./UtilidadesString.js");
 
 // Manifest mínimo para Stremio
 const manifest = {
@@ -92,6 +94,49 @@ function obtenerMetadatos(filePath) {
 			});
 		});
 	});
+}
+
+function obtenerIdiomasMKV(filePath) {
+    return new Promise((resolve, reject) => {
+        execFile(
+            "mkvmerge",
+            ["-J", filePath],
+            { maxBuffer: 1024 * 1024 * 10 },
+            (err, stdout) => {
+                if (err) return resolve({ audio: [], sub: [] }); // Si falla, devuelve vacío
+                try {
+                    const json = JSON.parse(stdout);
+                    const audio = [];
+                    const sub = [];
+                    for (const track of json.tracks) {
+                        if (track.type === "audio" || track.type === "subtitles") {
+                            let lang = (track.properties.language || "und").toLowerCase();
+                            let trackName = (track.properties.track_name || "").toLowerCase();
+
+                            // Prioridad: track_name > language
+                            if (trackName.includes("castellano") || trackName.includes("cast")) {
+                                lang = "Esp";
+                            } else if (trackName.includes("latino") || trackName.includes("lat")) {
+                                lang = "Lat";
+                            } else if (lang === "spa") {
+                                lang = "Esp";
+                            } else if (["esl", "es-la", "lat"].includes(lang)) {
+                                lang = "Lat";
+                            } else {
+                                lang = lang.toUpperCase();
+                            }
+
+                            if (track.type === "audio" && !audio.includes(lang)) audio.push(lang);
+                            if (track.type === "subtitles" && !sub.includes(lang)) sub.push(lang);
+                        }
+                    }
+                    resolve({ audio, sub });
+                } catch (e) {
+                    resolve({ audio: [], sub: [] });
+                }
+            }
+        );
+    });
 }
 
 let SERIES_MAP = {};
@@ -182,22 +227,23 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 	let streams = [];
 
 	if (type === "series") {
-		const [imdbId, seasonStr, episodeStr] = id.split(":");
-		const season = parseInt(seasonStr);
-		const episode = parseInt(episodeStr);
+		const [imdbId, nTemporadaStr, nEpisodioStr] = id.split(":");
+		const nTemporada = parseInt(nTemporadaStr);
+		const nEpisodio = parseInt(nEpisodioStr);
 
-		const folder = Object.keys(SERIES_MAP).find(
+		let nombreCarpetaSerie = Object.keys(SERIES_MAP).find(
 			(f) => SERIES_MAP[f] === imdbId
 		);
-		if (!folder) {
+		
+		if (!nombreCarpetaSerie) {
 			utilidadesLog.logWarn(
 				`[REQUEST] IMDb ID ${imdbId} no encontrado. Intentando recargar series_map.json...`
 			);
 			loadSeriesMap();
-			folder = Object.keys(SERIES_MAP).find((f) => SERIES_MAP[f] === imdbId);
+			nombreCarpetaSerie = Object.keys(SERIES_MAP).find((f) => SERIES_MAP[f] === imdbId);
 		}
 
-		if (!folder) {
+		if (!nombreCarpetaSerie) {
 			utilidadesLog.logWarn(
 				`[REQUEST] IMDb ID ${imdbId} no encontrado en series_map.json`
 			);
@@ -205,44 +251,39 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 				.status(404)
 				.json({ error: `IMDb ID ${imdbId} no encontrado en series_map.json.`});
 		} else {
-			const episodes = findEpisodes(folder);
-			const ep = episodes.find(
-				(e) => e.season === season && e.episode === episode
+			const episodios = findEpisodes(nombreCarpetaSerie);
+			const episodio = episodios.find(
+				(e) => e.season === nTemporada && e.episode === nEpisodio
 			);
-			if (ep) {
+			if (episodio) {
 				try {
-					const stat = fs.statSync(ep.path);
-					const tamano = formatearTamano(stat.size);
-					const metadatos = await obtenerMetadatos(ep.path);
-					const resolucion = `${metadatos.height}p`;
+					let title = await obtenerNombreEpisodio(episodio, nTemporada, nEpisodio, nombreCarpetaSerie);
 
 					streams.push({
 						name: "Local",
-						title: `${folder} S${String(season).padStart(2, "0")}E${String(
-							episode
-						).padStart(2, "0")} ${resolucion}\n💾 ${tamano}`,
+						title: title,
 						url: `http://${localIP}:${PORT}/file/${encodeURIComponent(
-							ep.path
+							episodio.path
 						)}`,
 					});
 
 					utilidadesLog.logInfo(
-						`[REQUEST] Episodio encontrado: ${ep.file} (${resolucion}, ${tamano})`
+						`[REQUEST] Episodio encontrado: ${episodio.file}`
 					);
 				} catch (err) {
 					utilidadesLog.logError(
-						`[REQUEST] No ha podido procesar el archivo ${ep.file}: ${err}`
+						`[REQUEST] No ha podido procesar el archivo ${episodio.file}: ${err}`
 					);
 					return res
 						.status(404)
-						.json({ error: `No se pudo procesar el archivo ${ep.file}.`});
+						.json({ error: `No se pudo procesar el archivo ${episodio.file}.`});
 				}
 			} else {
 				utilidadesLog.logWarn(
-					`[REQUEST] No se encontró el episodio S${season}E${episode} en la carpeta "${folder}"`
+					`[REQUEST] No se encontró el episodio S${nTemporada}E${nEpisodio} en la carpeta "${folder}"`
 				);
 				return res.status(404).json({
-					error: `Episodio S${season}E${episode} no encontrado en el servidor.`,
+					error: `Episodio S${nTemporada}E${nEpisodio} no encontrado en el servidor.`,
 				});
 			}
 		}
@@ -289,18 +330,18 @@ app.get("/file/:filePath", (req, res) => {
 		// Log cuando termina o se corta el stream
 		req.on("close", () => {
 			utilidadesLog.logInfo(
-				`[REQUEST-CLOSE] Cliente canceló chunk en ${path.basename(
+				`[REQUEST-CLOSE] El cliente canceló elchunk (${path.basename(
 					filePath
-				)} (${start}-${end})`
+				)} (${start}-${end}))`
 			);
 		});
 
 		// Log al etectar cancelaci��n (ej. si el usuario salta en la reproducci��n)
 		req.on("aborted", () => {
 			utilidadesLog.logInfo(
-				`[REQUEST-ABORTED] Cliente canceló chunk en ${path.basename(
+				`[REQUEST-ABORTED] El cliente canceló elchunk (${path.basename(
 					filePath
-				)} (${start}-${end})`
+				)} (${start}-${end}))`
 			);
 			file.destroy();
 		});
@@ -331,3 +372,29 @@ app.listen(PORT, "0.0.0.0", () => {
 		`IP LAN accesible: http://${localIP}:${PORT}/manifest.json`
 	);
 });
+
+async function obtenerNombreEpisodio(episodio, nTemporada, nEpisodio, nombreCarpetaSerie) {
+	const stat = fs.statSync(episodio.path);
+	const tamano = formatearTamano(stat.size);
+	const metadatos = await obtenerMetadatos(episodio.path);
+	const resolucion = `${metadatos.height}p`;
+
+	const idiomas = episodio.path.endsWith(".mkv") ? await obtenerIdiomasMKV(episodio.path) : { audio: [], sub: [] };
+
+	let prefijoAudio;
+	if (idiomas.audio.length > 2) prefijoAudio = "Multi: ";
+	else if (idiomas.audio.length === 2) prefijoAudio = "Dual: ";
+	else prefijoAudio = "";
+	const audioStr = idiomas.audio.length ? `${idiomas.audio.map(a => utilidadesString.toSmallCaps(a)).join(" / ")}` : "";
+	const subStr = idiomas.sub.length ? `${idiomas.sub.map(s => utilidadesString.toSmallCaps(s)).join(" / ")}` : "";
+
+	const numeroEpisodio = `S${String(nTemporada).padStart(2, "0")} E${String(nEpisodio).padStart(2, "0")}`;
+
+	let nombreCapitulo = `${nombreCarpetaSerie} ${numeroEpisodio}\n` +
+						 `📺 ${resolucion}\n` +
+						 `💾 ${tamano}\n` +
+						 `🔊 ${audioStr} 🔤 ${subStr}`;
+
+	return nombreCapitulo;
+}
+
