@@ -31,6 +31,8 @@ const manifest = {
 };
 
 const app = express();
+
+// Ruta al archivo series_map.json
 const SERIES_MAP_FILE = path.join(__dirname, "series_map.json");
 
 // Cargamos variables de entorno
@@ -187,7 +189,7 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 				}
 			} else {
 				utilidadesLog.logWarn(
-					`[REQUEST] No se encontró el episodio S${nTemporada}E${nEpisodio} en la carpeta "${folder}"`
+					`[REQUEST] No se encontró el episodio S${nTemporada}E${nEpisodio} en local.`
 				);
 				return res.status(StatusCodes.NOT_FOUND).json({
 					error: `Episodio S${nTemporada}E${nEpisodio} no encontrado en el servidor.`,
