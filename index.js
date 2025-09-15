@@ -51,14 +51,20 @@ function cargarMapaDeSeries() {
 		if (fs.existsSync(SERIES_MAP_FILE)) {
 			SERIES_MAP = JSON.parse(fs.readFileSync(SERIES_MAP_FILE, "utf8"));
 			var nEntradas = Object.keys(SERIES_MAP).length;
-			utilidadesLog.logInfo(`SERIES_MAP actualizado: ${nEntradas} entradas.`);
+
+			const mensajeInfoLog = utilidadesLog.formatInfoLog(`SERIES_MAP actualizado: ${nEntradas} entradas.`);
+			console.log(mensajeInfoLog);
 		} else {
-			utilidadesLog.logWarn(`No existe ${SERIES_MAP_FILE}.`);
 			SERIES_MAP = {};
+
+			const mensajeWarnLog = utilidadesLog.formatWarnLog(`No existe ${SERIES_MAP_FILE}.`);
+			console.warn(mensajeWarnLog);
 		}
 	} catch (err) {
-		utilidadesLog.logError(`Falló la carga de ${SERIES_MAP_FILE}: ${err}`);
 		SERIES_MAP = {};
+
+		const mensajeErrorLog = utilidadesLog.formatErrorLog(`Falló la carga de ${SERIES_MAP_FILE}: ${err}`)
+		console.error(mensajeErrorLog);
 	}
 }
 
@@ -110,13 +116,17 @@ app.use((req, res, next) => {
 
 // Middleware logs
 app.use((req, res, next) => {
-	const formatedUrl = decodeURIComponent(req.url);
-	utilidadesLog.logInfo(`${formatedUrl}`,`REQUEST(${req.method})`);
+	//const formatedUrl = decodeURIComponent(req.url);
+	//const mensajeInfoLog = utilidadesLog.formatInfoLog(`(${req.method}) ${formatedUrl}`,`REQUEST`);
+	//console.log(mensajeInfoLog);
+
 	next();
 });
 
 app.get("/manifest.json", (req, res) => {
-	utilidadesLog.logInfo(`Se solicitó el manifest`);
+	const mensajeInfoLog = utilidadesLog.formatInfoLog(`Se solicitó el manifest`,`REQUEST`);
+	console.log(mensajeInfoLog);
+
 	res.setHeader("Content-Type", "application/json");
 	res.end(JSON.stringify(manifest));
 });
@@ -129,9 +139,10 @@ app.get("/stream/:type/:id.json", async (req, res) => {
         return res.status(StatusCodes.BAD_REQUEST).json({ error: "Parámetros inválidos." });
     }
 
-	utilidadesLog.logInfo(
+	const mensajeInfoLog = utilidadesLog.formatInfoLog(
 		`Request de stream para ${type} con id: ${id}`,`REQUEST`
 	);
+	console.log(mensajeInfoLog);
 
 	let streams = [];
 
@@ -145,17 +156,22 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 		);
 		
 		if (!nombreCarpetaSerie) {
-			utilidadesLog.logWarn(
+
+			const mensajeWarnLog = utilidadesLog.formatWarnLog(
 				`IMDb ID ${imdbId} no encontrado. Intentando recargar series_map.json...`,`REQUEST`
-			);
+			)
+			console.warn(mensajeWarnLog);
+
 			cargarMapaDeSeries();
 			nombreCarpetaSerie = Object.keys(SERIES_MAP).find((f) => SERIES_MAP[f] === imdbId);
 		}
 
 		if (!nombreCarpetaSerie) {
-			utilidadesLog.logWarn(
+			const mensajeWarnLog = utilidadesLog.formatWarnLog(
 				`IMDb ID ${imdbId} no encontrado en series_map.json`,`REQUEST`
 			);
+			console.warn(mensajeWarnLog);
+
 			return res
 				.status(StatusCodes.NOT_FOUND)
 				.json({ error: `IMDb ID ${imdbId} no encontrado en series_map.json.`});
@@ -176,21 +192,26 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 						)}`,
 					});
 
-					utilidadesLog.logInfo(
+					const mensajeInfoLog = utilidadesLog.formatInfoLog(
 						`Episodio encontrado: ${episodio.file}`,`REQUEST`
 					);
+					console.log(mensajeInfoLog);
 				} catch (err) {
-					utilidadesLog.logError(
-						`No ha podido procesar el archivo ${episodio.file}: ${err}`,`REQUEST`
-					);
+					const mensajeErrorLog = utilidadesLog.formatErrorLog(
+						`Error al obtener metadatos del archivo ${episodio.file}: ${err}`,`REQUEST`
+					);	
+					console.error(mensajeErrorLog);
+
 					return res
 						.status(StatusCodes.INTERNAL_SERVER_ERROR)
 						.json({ error: `No se pudo procesar el archivo ${episodio.file}.`});
 				}
 			} else {
-				utilidadesLog.logWarn(
-					`No se encontró el episodio S${nTemporada}E${nEpisodio} en local.`,`REQUEST`
+				const mensajeWarnLog = utilidadesLog.formatWarnLog(
+					`Episodio S${nTemporada}E${nEpisodio} no encontrado en local.`,`REQUEST`
 				);
+				console.warn(mensajeWarnLog);
+
 				return res.status(StatusCodes.NOT_FOUND).json({
 					error: `Episodio S${nTemporada}E${nEpisodio} no encontrado en el servidor.`,
 				});
@@ -208,6 +229,7 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 // Endpoint de archivos con soporte de chunks
 app.get("/file/:filePath", (req, res) => {
 	const filePath = decodeURIComponent(req.params.filePath);
+	const fileName = path.basename(filePath);
 
     // Seguridad: Solo permitir archivos dentro de SERIES_DIR o PELICULAS_DIR
 	const absFilePath = path.resolve(filePath);
@@ -215,7 +237,11 @@ app.get("/file/:filePath", (req, res) => {
     const isInPeliculas = absFilePath.startsWith(path.resolve(PELICULAS_DIR) + path.sep);
 
     if (!isInSeries && !isInPeliculas) {
-        utilidadesLog.logWarn(`Intento de acceso a archivo fuera de las carpetas permitidas: ${filePath}`,`SECURITY`);
+		const mensajeWarnLog = utilidadesLog.formatWarnLog(
+			`Intento de acceso a archivo fuera de las carpetas permitidas: ${filePath}`,`SECURITY`
+		);
+        console.warn(mensajeWarnLog);
+
         return res.status(StatusCodes.FORBIDDEN).send("Acceso denegado.");
     }
 
@@ -231,11 +257,12 @@ app.get("/file/:filePath", (req, res) => {
 		const start = parseInt(parts[0], 10);
 		const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
 		const chunkSize = end - start + 1;
-		const fileName = path.basename(filePath);
+		const tamano = utilidadesArchivo.formatearTamano(chunkSize);
 
-		utilidadesLog.logInfo(
-			`${fileName} -> ${start}-${end} / ${fileSize} (${chunkSize} bytes)`,`REQUEST(RANGE)`
+		const mensajeInfoLog = utilidadesLog.formatInfoLog(
+			`El cliente ha solicitado un chunk (${fileName} [${start}-${end}]) (${tamano})`,`REQUEST(RANGE)`
 		);
+		console.log(mensajeInfoLog);
 
 		const file = fs.createReadStream(filePath, { start, end });
 		const head = {
@@ -252,31 +279,27 @@ app.get("/file/:filePath", (req, res) => {
 
 		// Log cuando termina o se corta el stream
 		req.on("close", () => {
-			utilidadesLog.logInfo(
-				`El cliente canceló elchunk (${path.basename(
-					filePath
-				)} (${start}-${end}))`,
+			const mensajeInfoLog = utilidadesLog.formatInfoLog(
+				`El envío del chunk ha terminado (${fileName} [${start}-${end}]) (CLOSE)`,
 				`REQUEST(CLOSE)`
 			);
+			console.log(mensajeInfoLog);
 		});
 
 		// Log al etectar cancelación (ej. si el usuario salta en la reproducción)
 		req.on("aborted", () => {
-			utilidadesLog.logInfo(
-				`El cliente canceló elchunk (${path.basename(
-					filePath
-				)} (${start}-${end}))`,
+			const mensajeInfoLog = utilidadesLog.formatInfoLog(
+				`El envío del chunk ha sido interrumpido (${fileName} [${start}-${end}]) (ABORTED)`,
 				`REQUEST(ABORTED)`
 			);
+			console.log(mensajeInfoLog);
+
 			file.destroy();
 		});
 	} else {
-		utilidadesLog.logInfo(
-			`Sirviendo archivo completo: ${path.basename(
-				filePath
-			)} (${fileSize} bytes)`,
-			`REQUEST(FULL)`
-		);
+		const tamano = utilidadesArchivo.formatearTamano(fileSize);
+		const mensajeInfoLog = utilidadesLog.formatInfoLog(`Sirviendo archivo completo: ${path.basename(filePath)} (${tamano})`,`REQUEST(FULL)`);
+		console.log(mensajeInfoLog);
 
 		const head = {
 			"Content-Length": fileSize,
@@ -291,12 +314,11 @@ app.get("/file/:filePath", (req, res) => {
 
 // Iniciar servidor en todas las interfaces
 app.listen(PORT, "0.0.0.0", () => {
-	utilidadesLog.logInfo(
-		`Addon corriendo en http://localhost:${PORT}/manifest.json`
-	);
-	utilidadesLog.logInfo(
-		`IP LAN accesible: http://${localIP}:${PORT}/manifest.json`
-	);
+	const mensajeInfoLog = utilidadesLog.formatInfoLog(`Addon corriendo en http://localhost:${PORT}/manifest.json`)
+	console.log(mensajeInfoLog);
+
+	const mensajeInfoLog2 = utilidadesLog.formatInfoLog(`IP LAN accesible: http://${localIP}:${PORT}/manifest.json`)
+	console.log(mensajeInfoLog2);
 });
 
 async function obtenerNombreEpisodio(episodio, nTemporada, nEpisodio, nombreCarpetaSerie) {
