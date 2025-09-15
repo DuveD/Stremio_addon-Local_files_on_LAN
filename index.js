@@ -6,6 +6,7 @@ const path = require("path");
 // Módulos de terceros
 require("dotenv").config();
 const express = require("express");
+const { StatusCodes, getReasonPhrase } = require('http-status-codes');
 
 // Módulos locales
 const utilidadesArchivo = 	require("./utilidades/UtilidadesArchivo.js");
@@ -101,7 +102,7 @@ app.use((req, res, next) => {
 		"Origin, X-Requested-With, Content-Type, Accept"
 	);
 	res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-	if (req.method === "OPTIONS") return res.sendStatus(200);
+	if (req.method === "OPTIONS") return res.sendStatus(StatusCodes.OK);
 	next();
 });
 
@@ -123,7 +124,7 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 	const { type, id } = req.params;
 
 	if (!type || !id) {
-        return res.status(400).json({ error: "Parámetros inválidos." });
+        return res.status(StatusCodes.BAD_REQUEST).json({ error: "Parámetros inválidos." });
     }
 
 	utilidadesLog.logInfo(
@@ -154,7 +155,7 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 				`[REQUEST] IMDb ID ${imdbId} no encontrado en series_map.json`
 			);
 			return res
-				.status(404)
+				.status(StatusCodes.NOT_FOUND)
 				.json({ error: `IMDb ID ${imdbId} no encontrado en series_map.json.`});
 		} else {
 			const episodios = buscarEpisodios(nombreCarpetaSerie);
@@ -181,18 +182,21 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 						`[REQUEST] No ha podido procesar el archivo ${episodio.file}: ${err}`
 					);
 					return res
-						.status(404)
+						.status(StatusCodes.INTERNAL_SERVER_ERROR)
 						.json({ error: `No se pudo procesar el archivo ${episodio.file}.`});
 				}
 			} else {
 				utilidadesLog.logWarn(
 					`[REQUEST] No se encontró el episodio S${nTemporada}E${nEpisodio} en la carpeta "${folder}"`
 				);
-				return res.status(404).json({
+				return res.status(StatusCodes.NOT_FOUND).json({
 					error: `Episodio S${nTemporada}E${nEpisodio} no encontrado en el servidor.`,
 				});
 			}
 		}
+	}
+	else {
+		return res.status(StatusCodes.BAD_REQUEST).json({ error: `Tipo ${type} no soportado.` });
 	}
 
 	res.setHeader("Content-Type", "application/json");
@@ -210,11 +214,11 @@ app.get("/file/:filePath", (req, res) => {
 
     if (!isInSeries && !isInPeliculas) {
         utilidadesLog.logWarn(`[SECURITY] Intento de acceso a archivo fuera de las carpetas permitidas: ${filePath}`);
-        return res.status(403).send("Acceso denegado.");
+        return res.status(StatusCodes.FORBIDDEN).send("Acceso denegado.");
     }
 
 	if (!fs.existsSync(filePath))
-		return res.status(404).send("Archivo no encontrado.");
+		return res.status(StatusCodes.NOT_FOUND).send("Archivo no encontrado.");
 
 	const stat = fs.statSync(filePath);
 	const fileSize = stat.size;
@@ -240,7 +244,7 @@ app.get("/file/:filePath", (req, res) => {
 				? "video/x-matroska"
 				: "video/mp4",
 		};
-		res.writeHead(206, head);
+		res.writeHead(StatusCodes.PARTIAL_CONTENT, head);
 
 		file.pipe(res);
 
@@ -275,7 +279,7 @@ app.get("/file/:filePath", (req, res) => {
 				? "video/x-matroska"
 				: "video/mp4",
 		};
-		res.writeHead(200, head);
+		res.writeHead(StatusCodes.OK, head);
 		fs.createReadStream(filePath).pipe(res);
 	}
 });
