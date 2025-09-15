@@ -18,7 +18,7 @@ const utilidadesString = 	require("./utilidades/UtilidadesString.js");
 // Manifest mínimo para Stremio
 const manifest = {
 	id: "org.localAddon.localLanStreaming",
-	version: "2.1.0",
+	version: "2.2.0",
 	name: "Local LAN Streaming",
 	description: "Addon para servir contenido almacenado en red local.",
 	resources: ["stream"],
