@@ -111,7 +111,7 @@ app.use((req, res, next) => {
 // Middleware logs
 app.use((req, res, next) => {
 	const formatedUrl = decodeURIComponent(req.url);
-	utilidadesLog.logInfo(`[REQUEST(${req.method})] ${formatedUrl}`);
+	utilidadesLog.logInfo(`${formatedUrl}`,`REQUEST(${req.method})`);
 	next();
 });
 
@@ -130,7 +130,7 @@ app.get("/stream/:type/:id.json", async (req, res) => {
     }
 
 	utilidadesLog.logInfo(
-		`[REQUEST] Request de stream para ${type} con id: ${id}`
+		`Request de stream para ${type} con id: ${id}`,`REQUEST`
 	);
 
 	let streams = [];
@@ -146,7 +146,7 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 		
 		if (!nombreCarpetaSerie) {
 			utilidadesLog.logWarn(
-				`[REQUEST] IMDb ID ${imdbId} no encontrado. Intentando recargar series_map.json...`
+				`IMDb ID ${imdbId} no encontrado. Intentando recargar series_map.json...`,`REQUEST`
 			);
 			cargarMapaDeSeries();
 			nombreCarpetaSerie = Object.keys(SERIES_MAP).find((f) => SERIES_MAP[f] === imdbId);
@@ -154,7 +154,7 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 
 		if (!nombreCarpetaSerie) {
 			utilidadesLog.logWarn(
-				`[REQUEST] IMDb ID ${imdbId} no encontrado en series_map.json`
+				`IMDb ID ${imdbId} no encontrado en series_map.json`,`REQUEST`
 			);
 			return res
 				.status(StatusCodes.NOT_FOUND)
@@ -177,11 +177,11 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 					});
 
 					utilidadesLog.logInfo(
-						`[REQUEST] Episodio encontrado: ${episodio.file}`
+						`Episodio encontrado: ${episodio.file}`,`REQUEST`
 					);
 				} catch (err) {
 					utilidadesLog.logError(
-						`[REQUEST] No ha podido procesar el archivo ${episodio.file}: ${err}`
+						`No ha podido procesar el archivo ${episodio.file}: ${err}`,`REQUEST`
 					);
 					return res
 						.status(StatusCodes.INTERNAL_SERVER_ERROR)
@@ -189,7 +189,7 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 				}
 			} else {
 				utilidadesLog.logWarn(
-					`[REQUEST] No se encontró el episodio S${nTemporada}E${nEpisodio} en local.`
+					`No se encontró el episodio S${nTemporada}E${nEpisodio} en local.`,`REQUEST`
 				);
 				return res.status(StatusCodes.NOT_FOUND).json({
 					error: `Episodio S${nTemporada}E${nEpisodio} no encontrado en el servidor.`,
@@ -215,7 +215,7 @@ app.get("/file/:filePath", (req, res) => {
     const isInPeliculas = absFilePath.startsWith(path.resolve(PELICULAS_DIR) + path.sep);
 
     if (!isInSeries && !isInPeliculas) {
-        utilidadesLog.logWarn(`[SECURITY] Intento de acceso a archivo fuera de las carpetas permitidas: ${filePath}`);
+        utilidadesLog.logWarn(`Intento de acceso a archivo fuera de las carpetas permitidas: ${filePath}`,`SECURITY`);
         return res.status(StatusCodes.FORBIDDEN).send("Acceso denegado.");
     }
 
@@ -234,7 +234,7 @@ app.get("/file/:filePath", (req, res) => {
 		const fileName = path.basename(filePath);
 
 		utilidadesLog.logInfo(
-			`[REQUEST(RANGE)] ${fileName} -> ${start}-${end} / ${fileSize} (${chunkSize} bytes)`
+			`${fileName} -> ${start}-${end} / ${fileSize} (${chunkSize} bytes)`,`REQUEST(RANGE)`
 		);
 
 		const file = fs.createReadStream(filePath, { start, end });
@@ -253,26 +253,29 @@ app.get("/file/:filePath", (req, res) => {
 		// Log cuando termina o se corta el stream
 		req.on("close", () => {
 			utilidadesLog.logInfo(
-				`[REQUEST(CLOSE)] El cliente canceló elchunk (${path.basename(
+				`El cliente canceló elchunk (${path.basename(
 					filePath
-				)} (${start}-${end}))`
+				)} (${start}-${end}))`,
+				`REQUEST(CLOSE)`
 			);
 		});
 
 		// Log al etectar cancelación (ej. si el usuario salta en la reproducción)
 		req.on("aborted", () => {
 			utilidadesLog.logInfo(
-				`[REQUEST(ABORTED)] El cliente canceló elchunk (${path.basename(
+				`El cliente canceló elchunk (${path.basename(
 					filePath
-				)} (${start}-${end}))`
+				)} (${start}-${end}))`,
+				`REQUEST(ABORTED)`
 			);
 			file.destroy();
 		});
 	} else {
 		utilidadesLog.logInfo(
-			`[REQUEST(FULL)] Sirviendo archivo completo: ${path.basename(
+			`Sirviendo archivo completo: ${path.basename(
 				filePath
-			)} (${fileSize} bytes)`
+			)} (${fileSize} bytes)`,
+			`REQUEST(FULL)`
 		);
 
 		const head = {
