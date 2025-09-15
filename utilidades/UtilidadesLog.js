@@ -7,31 +7,21 @@ function obtenerFechaHoraLog() {
 
 const width = 18;
 
-function log(level, mensaje, contexto) {
+function formatLog(level, mensaje, contexto) {
     const contextoFormateado = contexto ? `[${contexto}]`.padEnd(width) : ``;
     const mensajeLog = `[${obtenerFechaHoraLog()}][${level}]${contextoFormateado}: ${mensaje}`;
-    switch (level) {
-        case 'INFO':
-            console.log(mensajeLog);
-            break;
-        case 'WARN':
-            console.warn(mensajeLog);
-            break;
-        case 'ERROR':
-            console.error(mensajeLog);
-            break;
-    }
+    return mensajeLog;
 }
 
 // Funciones específicas para comodidad
-function logInfo(mensaje, contexto) {
-    log('INFO', mensaje, contexto);
+function formatInfoLog(mensaje, contexto) {
+    return formatLog('INFO', mensaje, contexto);
 }
-function logWarn(mensaje, contexto) {
-    log('WARN', mensaje, contexto);
+function formatWarnLog(mensaje, contexto) {
+    return formatLog('WARN', mensaje, contexto);
 }
-function logError(mensaje, contexto) {
-    log('ERROR', mensaje, contexto);
+function formatErrorLog(mensaje, contexto) {
+    return formatLog('ERROR', mensaje, contexto);
 }
 
-export { logInfo, logWarn, logError };
+export { formatInfoLog, formatWarnLog, formatErrorLog };
