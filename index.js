@@ -111,7 +111,7 @@ app.use((req, res, next) => {
 // Middleware logs
 app.use((req, res, next) => {
 	const formatedUrl = decodeURIComponent(req.url);
-	utilidadesLog.logInfo(`[REQUEST] ${req.method} ${formatedUrl}`);
+	utilidadesLog.logInfo(`[REQUEST(${req.method})] ${formatedUrl}`);
 	next();
 });
 
@@ -234,7 +234,7 @@ app.get("/file/:filePath", (req, res) => {
 		const fileName = path.basename(filePath);
 
 		utilidadesLog.logInfo(
-			`[REQUEST-RANGE] ${fileName} -> ${start}-${end} / ${fileSize} (${chunkSize} bytes)`
+			`[REQUEST(RANGE)] ${fileName} -> ${start}-${end} / ${fileSize} (${chunkSize} bytes)`
 		);
 
 		const file = fs.createReadStream(filePath, { start, end });
@@ -253,7 +253,7 @@ app.get("/file/:filePath", (req, res) => {
 		// Log cuando termina o se corta el stream
 		req.on("close", () => {
 			utilidadesLog.logInfo(
-				`[REQUEST-CLOSE] El cliente canceló elchunk (${path.basename(
+				`[REQUEST(CLOSE)] El cliente canceló elchunk (${path.basename(
 					filePath
 				)} (${start}-${end}))`
 			);
@@ -262,7 +262,7 @@ app.get("/file/:filePath", (req, res) => {
 		// Log al etectar cancelación (ej. si el usuario salta en la reproducción)
 		req.on("aborted", () => {
 			utilidadesLog.logInfo(
-				`[REQUEST-ABORTED] El cliente canceló elchunk (${path.basename(
+				`[REQUEST(ABORTED)] El cliente canceló elchunk (${path.basename(
 					filePath
 				)} (${start}-${end}))`
 			);
@@ -270,7 +270,7 @@ app.get("/file/:filePath", (req, res) => {
 		});
 	} else {
 		utilidadesLog.logInfo(
-			`[REQUEST-FULL] Sirviendo archivo completo: ${path.basename(
+			`[REQUEST(FULL)] Sirviendo archivo completo: ${path.basename(
 				filePath
 			)} (${fileSize} bytes)`
 		);
