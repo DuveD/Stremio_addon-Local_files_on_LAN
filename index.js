@@ -1,25 +1,25 @@
+
 // Módulos nativos
 const fs = require("fs");
 const path = require("path");
-const os = require("os");
 
 // Módulos de terceros
 require("dotenv").config();
 const express = require("express");
-const ffmpeg = require("fluent-ffmpeg");
-ffmpeg.setFfprobePath("ffprobe");
-const { execFile } = require("child_process");
 
 // Módulos locales
+const utilidadesArchivo = require("./UtilidadesArchivo.js");
+const utilidadesEntorno = require("./UtilidadesEntorno.js");
 const utilidadesLog = require("./UtilidadesLog.js");
+const utilidadesRed = require("./UtilidadesRed.js");
 const utilidadesString = require("./UtilidadesString.js");
 
 // Manifest mínimo para Stremio
 const manifest = {
-	id: "org.localaddon.series",
-	version: "2.0.1",
-	name: "Local",
-	description: "Sirve episodios de series almacenados en local.",
+	id: "org.localAddon.localLanStreaming",
+	version: "2.1.0",
+	name: "Local LAN Streaming",
+	description: "Addon para servir contenido almacenado en red local.",
 	resources: ["stream"],
 	types: ["series"],
 	idPrefixes: ["tt"],
@@ -32,117 +32,18 @@ const manifest = {
 const app = express();
 const SERIES_MAP_FILE = path.join(__dirname, "series_map.json");
 
-// Función para cargar variables de entorno con manejo de errores.
-function cargarVariableDeEntorno(nombre, valorPorDefecto) {
-	if (!process.env[nombre]) {
-		if (valorPorDefecto !== undefined) {
-			utilidadesLog.logWarn(
-				`La variable de entorno ${nombre} no está definida. Se usará el valor por defecto: ${valorPorDefecto}.`
-			);
-			return valorPorDefecto;
-		} else {
-			utilidadesLog.logError(
-				`Debes definir la variable PORT archivo de variables de entorno '.env'.`
-			);
-			process.exit(1);
-		}
-	} else {
-		return process.env[nombre];
-	}
-}
-
 // Cargamos variables de entorno
-const CONTENT_DIR = cargarVariableDeEntorno("CONTENT_DIR");
-const PORT = cargarVariableDeEntorno("PORT");
+const SERIES_DIR = utilidadesEntorno.cargarVariable("SERIES_DIR");
+const PELICULAS_DIR = utilidadesEntorno.cargarVariable("PELICULAS_DIR");
+const PORT = utilidadesEntorno.cargarVariable("PORT");
+const FORMATO_NOMBRE_SIMPLIFICADO = utilidadesEntorno.cargarVariableBoolean("FORMATO_NOMBRE_SIMPLIFICADO", false);
 
-// FUnción para obtener IP Local.
-function obtenerIPLocal() {
-	const nets = os.networkInterfaces();
-
-	for (const name of Object.keys(nets)) {
-		for (const net of nets[name]) {
-			if (net.family === "IPv4" && !net.internal) return net.address;
-		}
-	}
-
-	return "127.0.0.1";
-}
-
-const localIP = obtenerIPLocal();
-
-function formatearTamano(bytes) {
-	if (bytes === 0) return "0.00 B";
-
-	const units = ["B", "KB", "MB", "GB", "TB", "PB"];
-	const i = Math.floor(Math.log(bytes) / Math.log(1024));
-	const size = bytes / Math.pow(1024, i);
-
-	return size.toFixed(2) + " " + units[i];
-}
-
-function obtenerMetadatos(filePath) {
-	return new Promise((resolve, reject) => {
-		ffmpeg.ffprobe(filePath, (err, metadata) => {
-			if (err) return reject(err);
-			const stream = metadata.streams.find((s) => s.width && s.height);
-			if (!stream)
-				return resolve({ width: 0, height: 0, resolution: "Desconocida" });
-			resolve({
-				width: stream.width,
-				height: stream.height,
-				resolution: `${stream.width}x${stream.height}`,
-			});
-		});
-	});
-}
-
-function obtenerIdiomasMKV(filePath) {
-    return new Promise((resolve, reject) => {
-        execFile(
-            "mkvmerge",
-            ["-J", filePath],
-            { maxBuffer: 1024 * 1024 * 10 },
-            (err, stdout) => {
-                if (err) return resolve({ audio: [], sub: [] }); // Si falla, devuelve vacío
-                try {
-                    const json = JSON.parse(stdout);
-                    const audio = [];
-                    const sub = [];
-                    for (const track of json.tracks) {
-                        if (track.type === "audio" || track.type === "subtitles") {
-                            let lang = (track.properties.language || "und").toLowerCase();
-                            let trackName = (track.properties.track_name || "").toLowerCase();
-
-                            // Prioridad: track_name > language
-                            if (trackName.includes("castellano") || trackName.includes("cast")) {
-                                lang = "Esp";
-                            } else if (trackName.includes("latino") || trackName.includes("lat")) {
-                                lang = "Lat";
-                            } else if (lang === "spa") {
-                                lang = "Esp";
-                            } else if (["esl", "es-la", "lat"].includes(lang)) {
-                                lang = "Lat";
-                            } else {
-                                lang = lang.toUpperCase();
-                            }
-
-                            if (track.type === "audio" && !audio.includes(lang)) audio.push(lang);
-                            if (track.type === "subtitles" && !sub.includes(lang)) sub.push(lang);
-                        }
-                    }
-                    resolve({ audio, sub });
-                } catch (e) {
-                    resolve({ audio: [], sub: [] });
-                }
-            }
-        );
-    });
-}
+const localIP = utilidadesRed.obtenerIPLocal();
 
 let SERIES_MAP = {};
 
 // Función para cargar series_map.json
-function loadSeriesMap() {
+function cargarMapaDeSeries() {
 	try {
 		if (fs.existsSync(SERIES_MAP_FILE)) {
 			SERIES_MAP = JSON.parse(fs.readFileSync(SERIES_MAP_FILE, "utf8"));
@@ -159,11 +60,11 @@ function loadSeriesMap() {
 }
 
 // Cargar una vez al inicio
-loadSeriesMap();
+cargarMapaDeSeries();
 
 // Buscar episodios por carpeta
-function findEpisodes(folder) {
-	const showPath = path.join(CONTENT_DIR, folder);
+function buscarEpisodios(folder) {
+	const showPath = path.join(SERIES_DIR, folder);
 	if (!fs.existsSync(showPath)) return [];
 
 	const episodes = [];
@@ -220,6 +121,11 @@ app.get("/manifest.json", (req, res) => {
 // Endpoint de streams
 app.get("/stream/:type/:id.json", async (req, res) => {
 	const { type, id } = req.params;
+
+	if (!type || !id) {
+        return res.status(400).json({ error: "Parámetros inválidos." });
+    }
+
 	utilidadesLog.logInfo(
 		`[REQUEST] Request de stream para ${type} con id: ${id}`
 	);
@@ -239,7 +145,7 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 			utilidadesLog.logWarn(
 				`[REQUEST] IMDb ID ${imdbId} no encontrado. Intentando recargar series_map.json...`
 			);
-			loadSeriesMap();
+			cargarMapaDeSeries();
 			nombreCarpetaSerie = Object.keys(SERIES_MAP).find((f) => SERIES_MAP[f] === imdbId);
 		}
 
@@ -251,17 +157,17 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 				.status(404)
 				.json({ error: `IMDb ID ${imdbId} no encontrado en series_map.json.`});
 		} else {
-			const episodios = findEpisodes(nombreCarpetaSerie);
+			const episodios = buscarEpisodios(nombreCarpetaSerie);
 			const episodio = episodios.find(
 				(e) => e.season === nTemporada && e.episode === nEpisodio
 			);
 			if (episodio) {
 				try {
-					let title = await obtenerNombreEpisodio(episodio, nTemporada, nEpisodio, nombreCarpetaSerie);
+					const nombreEpisodio = await obtenerNombreEpisodio(episodio, nTemporada, nEpisodio, nombreCarpetaSerie);
 
 					streams.push({
-						name: "Local",
-						title: title,
+						name: "Local LAN Streaming",
+						title: nombreEpisodio,
 						url: `http://${localIP}:${PORT}/file/${encodeURIComponent(
 							episodio.path
 						)}`,
@@ -296,6 +202,17 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 // Endpoint de archivos con soporte de chunks
 app.get("/file/:filePath", (req, res) => {
 	const filePath = decodeURIComponent(req.params.filePath);
+
+    // Seguridad: Solo permitir archivos dentro de SERIES_DIR o PELICULAS_DIR
+	const absFilePath = path.resolve(filePath);
+    const isInSeries = absFilePath.startsWith(path.resolve(SERIES_DIR) + path.sep);
+    const isInPeliculas = absFilePath.startsWith(path.resolve(PELICULAS_DIR) + path.sep);
+
+    if (!isInSeries && !isInPeliculas) {
+        utilidadesLog.logWarn(`[SECURITY] Intento de acceso a archivo fuera de las carpetas permitidas: ${filePath}`);
+        return res.status(403).send("Acceso denegado.");
+    }
+
 	if (!fs.existsSync(filePath))
 		return res.status(404).send("Archivo no encontrado.");
 
@@ -336,7 +253,7 @@ app.get("/file/:filePath", (req, res) => {
 			);
 		});
 
-		// Log al etectar cancelaci��n (ej. si el usuario salta en la reproducci��n)
+		// Log al etectar cancelación (ej. si el usuario salta en la reproducción)
 		req.on("aborted", () => {
 			utilidadesLog.logInfo(
 				`[REQUEST-ABORTED] El cliente canceló elchunk (${path.basename(
@@ -375,25 +292,40 @@ app.listen(PORT, "0.0.0.0", () => {
 
 async function obtenerNombreEpisodio(episodio, nTemporada, nEpisodio, nombreCarpetaSerie) {
 	const stat = fs.statSync(episodio.path);
-	const tamano = formatearTamano(stat.size);
-	const metadatos = await obtenerMetadatos(episodio.path);
+	const tamano = utilidadesArchivo.formatearTamano(stat.size);
+	const metadatos = await utilidadesArchivo.obtenerMetadatos(episodio.path);
 	const resolucion = `${metadatos.height}p`;
 
-	const idiomas = episodio.path.endsWith(".mkv") ? await obtenerIdiomasMKV(episodio.path) : { audio: [], sub: [] };
+	const idiomasAudio = metadatos.idiomas && metadatos.idiomas.audio ? metadatos.idiomas.audio : [];
+	const idiomaSubstitulos = metadatos.idiomas && metadatos.idiomas.subtitulos ? metadatos.idiomas.subtitulos : [];
 
-	let prefijoAudio;
-	if (idiomas.audio.length > 2) prefijoAudio = "Multi: ";
-	else if (idiomas.audio.length === 2) prefijoAudio = "Dual: ";
-	else prefijoAudio = "";
-	const audioStr = idiomas.audio.length ? `${idiomas.audio.map(a => utilidadesString.toSmallCaps(a)).join(" / ")}` : "";
-	const subStr = idiomas.sub.length ? `${idiomas.sub.map(s => utilidadesString.toSmallCaps(s)).join(" / ")}` : "";
+	const numeracionEpisodio = `S${String(nTemporada).padStart(2, "0")} E${String(nEpisodio).padStart(2, "0")}`;
 
-	const numeroEpisodio = `S${String(nTemporada).padStart(2, "0")} E${String(nEpisodio).padStart(2, "0")}`;
+	let nombreCapitulo;
+	if(FORMATO_NOMBRE_SIMPLIFICADO) {
+		let prefijoAudio;
+		if (idiomasAudio.length > 2) prefijoAudio = "Multi";
+		else if (idiomasAudio.length === 2) prefijoAudio = "Dual";
+		else prefijoAudio = "";
 
-	let nombreCapitulo = `${nombreCarpetaSerie} ${numeroEpisodio}\n` +
+		const audioStr = idiomasAudio.length ? ` [${prefijoAudio}: ${idiomasAudio.map(a => a.toUpperCase()).join("/")}]` : null;
+		const subStr = idiomaSubstitulos.length ? `[Sub: ${idiomaSubstitulos.map(s => s.toUpperCase()).join("/")}]` : null;
+
+		nombreCapitulo = `${nombreCarpetaSerie} ${numeracionEpisodio} [${resolucion}] [${tamano}]`;
+		if (audioStr) nombreCapitulo += '' + `${audioStr}`;
+		if (subStr) nombreCapitulo += '' + ` ${subStr}`;
+		nombreCapitulo += `\n💾 ${tamano}`;
+	}
+	else {
+		const audioStr = idiomasAudio.length ? `🔊 ${idiomasAudio.map(a => utilidadesString.toSmallCaps(a)).join(" / ")}` : null;
+		const subStr = idiomaSubstitulos.length ? `🔤 ${idiomaSubstitulos.map(s => utilidadesString.toSmallCaps(s)).join(" / ")}` : null;
+
+		nombreCapitulo = `${nombreCarpetaSerie} ${numeracionEpisodio}\n` +
 						 `📺 ${resolucion}\n` +
-						 `💾 ${tamano}\n` +
-						 `🔊 ${audioStr} 🔤 ${subStr}`;
+						 `💾 ${tamano}`;
+		const idiomasPistas = [audioStr, subStr].filter(Boolean).join(" ");
+		if (idiomasPistas) nombreCapitulo += `\n${idiomasPistas}`;
+	}
 
 	return nombreCapitulo;
 }
