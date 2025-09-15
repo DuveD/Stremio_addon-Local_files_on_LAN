@@ -8,11 +8,11 @@ require("dotenv").config();
 const express = require("express");
 
 // Módulos locales
-const utilidadesArchivo = require("./UtilidadesArchivo.js");
-const utilidadesEntorno = require("./UtilidadesEntorno.js");
-const utilidadesLog = require("./UtilidadesLog.js");
-const utilidadesRed = require("./UtilidadesRed.js");
-const utilidadesString = require("./UtilidadesString.js");
+const utilidadesArchivo = 	require("./utilidades/UtilidadesArchivo.js");
+const utilidadesEntorno = 	require("./utilidades/UtilidadesEntorno.js");
+const utilidadesLog = 		require("./utilidades/UtilidadesLog.js");
+const utilidadesRed = 		require("./utilidades/UtilidadesRed.js");
+const utilidadesString = 	require("./utilidades/UtilidadesString.js");
 
 // Manifest mínimo para Stremio
 const manifest = {
