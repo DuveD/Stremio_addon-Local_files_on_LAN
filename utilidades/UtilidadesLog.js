@@ -8,7 +8,8 @@ function obtenerFechaHoraLog() {
 const width = 18;
 
 function formatLog(level, mensaje, contexto) {
-    const contextoFormateado = contexto ? `[${contexto}]`.padEnd(width) : ``;
+    let contextoFormateado = contexto ? `[${contexto}]` : ``;
+    contextoFormateado = contextoFormateado.padEnd(width, ' ');
     const mensajeLog = `[${obtenerFechaHoraLog()}][${level}]${contextoFormateado}: ${mensaje}`;
     return mensajeLog;
 }
