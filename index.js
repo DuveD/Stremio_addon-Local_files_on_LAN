@@ -15,14 +15,17 @@ const utilidadesLog = 		require("./utilidades/UtilidadesLog.js");
 const utilidadesRed = 		require("./utilidades/UtilidadesRed.js");
 const utilidadesString = 	require("./utilidades/UtilidadesString.js");
 
+const CONTENT_TYPE_SERIES = "series";
+const CONTENT_TYPE_MOVIE = "movie";
+
 // Manifest mínimo para Stremio
 const manifest = {
 	id: "org.localAddon.localLanStreaming",
-	version: "2.2.0",
+	version: "3.0.0",
 	name: "Local LAN Streaming",
 	description: "Addon para servir contenido almacenado en red local.",
 	resources: ["stream"],
-	types: ["series"],
+	types: [CONTENT_TYPE_SERIES, CONTENT_TYPE_MOVIE],
 	idPrefixes: ["tt"],
 	behaviorHints: {
 		configurable: false,
@@ -33,7 +36,14 @@ const manifest = {
 const app = express();
 
 // Ruta al archivo series_map.json
-const SERIES_MAP_FILE = path.join(__dirname, "series_map.json");
+const SERIES_MAP_FILE_NAME = "series_map.json";
+const SERIES_MAP_FILE = path.join(__dirname, SERIES_MAP_FILE_NAME);
+let SERIES_MAP = {};
+// Ruta al archivo peliculas_map.json
+
+const PELICULAS_MAP_FILE_NAME = "peliculas_map.json";
+const PELICULAS_MAP_FILE = path.join(__dirname, PELICULAS_MAP_FILE_NAME);
+let PELICULAS_MAP = {};
 
 // Cargamos variables de entorno
 const SERIES_DIR = utilidadesEntorno.cargarVariable("SERIES_DIR");
@@ -43,44 +53,65 @@ const FORMATO_NOMBRE_SIMPLIFICADO = utilidadesEntorno.cargarVariableBoolean("FOR
 
 const localIP = utilidadesRed.obtenerIPLocal();
 
-let SERIES_MAP = {};
-
 // Función para cargar series_map.json
-function cargarMapaDeSeries() {
-	try {
-		if (fs.existsSync(SERIES_MAP_FILE)) {
-			SERIES_MAP = JSON.parse(fs.readFileSync(SERIES_MAP_FILE, "utf8"));
-			var nEntradas = Object.keys(SERIES_MAP).length;
+function cargarMapa(type) {
+	let mapa = null
+	let nombreMapa = null;
+	let path = null;
+	let informarMapGlobal = null;
+	if (type === CONTENT_TYPE_SERIES) {
+		nombreMapa = SERIES_MAP_FILE_NAME;
+		path = SERIES_MAP_FILE;
+		informarMapGlobal = (data) => (SERIES_MAP = data);
+	} else if (type === CONTENT_TYPE_MOVIE) {
+		nombreMapa = PELICULAS_MAP_FILE_NAME;
+		path = PELICULAS_MAP_FILE;
+		informarMapGlobal = (data) => (PELICULAS_MAP = data);
+	}
 
-			const mensajeInfoLog = utilidadesLog.formatInfoLog(`SERIES_MAP actualizado: ${nEntradas} entradas.`);
+	try {
+		if (fs.existsSync(path)) {
+			mapa = JSON.parse(fs.readFileSync(path, "utf8"));
+			var nEntradas = Object.keys(mapa).length;
+
+			const mensajeInfoLog = utilidadesLog.formatInfoLog(`${nombreMapa} actualizado: ${nEntradas} entradas.`);
 			console.log(mensajeInfoLog);
 		} else {
-			SERIES_MAP = {};
+			mapa = {};
 
-			const mensajeWarnLog = utilidadesLog.formatWarnLog(`No existe ${SERIES_MAP_FILE}.`);
+			const mensajeWarnLog = utilidadesLog.formatWarnLog(`No existe ${nombreMapa}.`);
 			console.warn(mensajeWarnLog);
 		}
 	} catch (err) {
-		SERIES_MAP = {};
+		mapa = {};
 
-		const mensajeErrorLog = utilidadesLog.formatErrorLog(`Falló la carga de ${SERIES_MAP_FILE}: ${err}`)
+		const mensajeErrorLog = utilidadesLog.formatErrorLog(`Falló la carga de ${nombreMapa}: ${err}`)
 		console.error(mensajeErrorLog);
 	}
+	
+	informarMapGlobal(mapa);
 }
 
 // Cargar una vez al inicio
-cargarMapaDeSeries();
+cargarMapa(CONTENT_TYPE_SERIES);
+cargarMapa(CONTENT_TYPE_MOVIE);
 
 // Buscar episodios por carpeta
 function buscarEpisodios(folder) {
+	// Seguridad: evitar rutas con ../
 	const showPath = path.join(SERIES_DIR, folder);
+
+	// Si no existe la carpeta, devolver array vacío.
 	if (!fs.existsSync(showPath)) return [];
 
 	const episodes = [];
+
+	// Buscar carpetas que empiecen por "Season" (case insensitive).
 	const seasonDirs = fs
 		.readdirSync(showPath)
 		.filter((d) => d.toLowerCase().startsWith("season"));
 
+	// Por cada carpeta de temporada, buscar archivos de video.
 	seasonDirs.forEach((seasonFolder) => {
 		const seasonPath = path.join(showPath, seasonFolder);
 		const files = fs.readdirSync(seasonPath);
@@ -131,6 +162,47 @@ app.get("/manifest.json", (req, res) => {
 	res.end(JSON.stringify(manifest));
 });
 
+function obtenerCarpetaDesdeIdmdbId(type, imdbId, recargarMapaSiFalla = true) {
+	let carpeta = null;
+
+	let mapa = null
+	let nombreMapa = null;
+	if (type === CONTENT_TYPE_SERIES) {
+		nombreMapa = SERIES_MAP_FILE_NAME;
+		mapa = SERIES_MAP;
+	} else if (type === CONTENT_TYPE_MOVIE) {
+		nombreMapa = PELICULAS_MAP_FILE_NAME;
+		mapa = PELICULAS_MAP;
+	}
+
+	if (mapa) {
+		carpeta = Object.keys(mapa).find(f => mapa[f] === imdbId);
+	}
+
+	if(carpeta) 
+	{
+		return carpeta;
+	}
+	else if(recargarMapaSiFalla) {
+		const mensajeWarnLog = utilidadesLog.formatWarnLog(
+			`IMDb ID ${imdbId} no encontrado en ${nombreMapa}. Recargando ${nombreMapa}...`
+		);
+		console.warn(mensajeWarnLog);
+		
+		cargarMapa(type);
+		
+		return obtenerCarpetaDesdeIdmdbId(type, imdbId, false);
+	}
+	else {
+		const mensajeWarnLog = utilidadesLog.formatWarnLog(
+			`IMDb ID ${imdbId} no encontrado en ${nombreMapa}`
+		);
+		console.warn(mensajeWarnLog);
+
+		return null;
+	}
+}
+
 // Endpoint de streams
 app.get("/stream/:type/:id.json", async (req, res) => {
 	const { type, id } = req.params;
@@ -146,35 +218,22 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 
 	let streams = [];
 
-	if (type === "series") {
+	if (type === CONTENT_TYPE_SERIES) {
 		const [imdbId, nTemporadaStr, nEpisodioStr] = id.split(":");
 		const nTemporada = parseInt(nTemporadaStr);
 		const nEpisodio = parseInt(nEpisodioStr);
 
-		let nombreCarpetaSerie = Object.keys(SERIES_MAP).find(
-			(f) => SERIES_MAP[f] === imdbId
-		);
-		
-		if (!nombreCarpetaSerie) {
-
-			const mensajeWarnLog = utilidadesLog.formatWarnLog(
-				`IMDb ID ${imdbId} no encontrado. Intentando recargar series_map.json...`,`REQUEST`
-			)
-			console.warn(mensajeWarnLog);
-
-			cargarMapaDeSeries();
-			nombreCarpetaSerie = Object.keys(SERIES_MAP).find((f) => SERIES_MAP[f] === imdbId);
-		}
+		let nombreCarpetaSerie = obtenerCarpetaDesdeIdmdbId(type, imdbId);
 
 		if (!nombreCarpetaSerie) {
 			const mensajeWarnLog = utilidadesLog.formatWarnLog(
-				`IMDb ID ${imdbId} no encontrado en series_map.json`,`REQUEST`
+				`IMDb ID ${imdbId} no encontrado en el servidor`,`REQUEST`
 			);
 			console.warn(mensajeWarnLog);
 
 			return res
 				.status(StatusCodes.NOT_FOUND)
-				.json({ error: `IMDb ID ${imdbId} no encontrado en series_map.json.`});
+				.json({ error: `IMDb ID ${imdbId} no encontrado en el servidor.`});
 		} else {
 			const episodios = buscarEpisodios(nombreCarpetaSerie);
 			const episodio = episodios.find(
@@ -182,11 +241,11 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 			);
 			if (episodio) {
 				try {
-					const nombreEpisodio = await obtenerNombreEpisodio(episodio, nTemporada, nEpisodio, nombreCarpetaSerie);
+					const nombreEinformacionPelicula = await obtenerNombreEInformacionArchivo(episodio.path, nombreCarpetaSerie, nTemporada, nEpisodio);
 
 					streams.push({
 						name: "Local LAN Streaming",
-						title: nombreEpisodio,
+						title: nombreEinformacionPelicula,
 						url: `http://${localIP}:${PORT}/file/${encodeURIComponent(
 							episodio.path
 						)}`,
@@ -208,7 +267,7 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 				}
 			} else {
 				const mensajeWarnLog = utilidadesLog.formatWarnLog(
-					`Episodio S${nTemporada}E${nEpisodio} no encontrado en local.`,`REQUEST`
+					`Episodio S${nTemporada}E${nEpisodio} no encontrado en la carpeta ${nombreCarpetaSerie}. `,`REQUEST`
 				);
 				console.warn(mensajeWarnLog);
 
@@ -216,6 +275,52 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 					error: `Episodio S${nTemporada}E${nEpisodio} no encontrado en el servidor.`,
 				});
 			}
+		}
+	}
+	else if (type === CONTENT_TYPE_MOVIE) {
+		const imdbId = id;
+
+		// Aquí tendrías que tener un map similar a SERIES_MAP para películas
+		let nombreCarpetaPelicula = obtenerCarpetaDesdeIdmdbId(type, imdbId);
+
+		if (!nombreCarpetaPelicula) {
+			const mensajeWarnLog = utilidadesLog.formatWarnLog(
+				`IMDb ID ${imdbId} no encontrado en el servidor`,`REQUEST`
+			);
+			console.warn(mensajeWarnLog);
+
+			return res
+				.status(StatusCodes.NOT_FOUND)
+				.json({ error: `IMDb ID ${imdbId} no encontrado en el servidor.`});
+		}
+		else
+		{
+			// Buscar archivo de video en la carpeta de la película
+			const pathCompletoCarpetaPelicula = path.join(PELICULAS_DIR, nombreCarpetaPelicula);
+			const pathCarpetaPelicula = fs.readdirSync(pathCompletoCarpetaPelicula);
+			const nombreArchivo = pathCarpetaPelicula.find((f) => f.endsWith(".mp4") || f.endsWith(".mkv"));
+			const pathCompletoPelicula = path.join(pathCompletoCarpetaPelicula, nombreArchivo);
+
+			const nombreEinformacionPelicula = await obtenerNombreEInformacionArchivo(pathCompletoPelicula, nombreCarpetaPelicula);
+
+			// Si encontramos más de uno, lanzamos error y avisamos al usuario.
+			if (!nombreArchivo) {
+				const mensajeWarnLog = utilidadesLog.formatWarnLog(
+					`No se encontró archivo de video para IMDb ID ${imdbId} en la carpeta ${nombreCarpetaPelicula}.`,`REQUEST`
+				);
+				console.warn(mensajeWarnLog);
+				return res.status(StatusCodes.NOT_FOUND).json({
+					error: `No se encontró archivo de video para IMDb ID ${imdbId} en el servidor.`
+				});
+			}
+
+			const filePath = path.join(PELICULAS_DIR, nombreCarpetaPelicula, nombreArchivo);
+
+			streams.push({
+				name: "Local LAN Streaming",
+				title: nombreEinformacionPelicula,
+				url: `http://${localIP}:${PORT}/file/${encodeURIComponent(filePath)}`
+			});
 		}
 	}
 	else {
@@ -321,16 +426,18 @@ app.listen(PORT, "0.0.0.0", () => {
 	console.log(mensajeInfoLog2);
 });
 
-async function obtenerNombreEpisodio(episodio, nTemporada, nEpisodio, nombreCarpetaSerie) {
-	const stat = fs.statSync(episodio.path);
+async function obtenerNombreEInformacionArchivo(path, nombreCarpeta, nTemporada, nEpisodio) {
+	const stat = fs.statSync(path);
 	const tamano = utilidadesArchivo.formatearTamano(stat.size);
-	const metadatos = await utilidadesArchivo.obtenerMetadatos(episodio.path);
+	const metadatos = await utilidadesArchivo.obtenerMetadatos(path);
 	const resolucion = `${metadatos.height}p`;
 
 	const idiomasAudio = metadatos.idiomas && metadatos.idiomas.audio ? metadatos.idiomas.audio : [];
 	const idiomaSubstitulos = metadatos.idiomas && metadatos.idiomas.subtitulos ? metadatos.idiomas.subtitulos : [];
 
-	const numeracionEpisodio = `S${String(nTemporada).padStart(2, "0")} E${String(nEpisodio).padStart(2, "0")}`;
+	let numeracionEpisodio = null;
+	if(nTemporada && nEpisodio)
+		numeracionEpisodio = `S${String(nTemporada).padStart(2, "0")} E${String(nEpisodio).padStart(2, "0")}`;
 
 	let nombreCapitulo;
 	if(FORMATO_NOMBRE_SIMPLIFICADO) {
@@ -342,7 +449,11 @@ async function obtenerNombreEpisodio(episodio, nTemporada, nEpisodio, nombreCarp
 		const audioStr = idiomasAudio.length ? ` [${prefijoAudio}: ${idiomasAudio.map(a => a.toUpperCase()).join("/")}]` : null;
 		const subStr = idiomaSubstitulos.length ? `[Sub: ${idiomaSubstitulos.map(s => s.toUpperCase()).join("/")}]` : null;
 
-		nombreCapitulo = `${nombreCarpetaSerie} ${numeracionEpisodio} [${resolucion}] [${tamano}]`;
+		nombreCapitulo = `${nombreCarpeta}`;
+		if (numeracionEpisodio)
+			nombreCapitulo += ` ${numeracionEpisodio}`;
+		nombreCapitulo += ` [${resolucion}]`;
+		nombreCapitulo += ` [${tamano}]`;
 		if (audioStr) nombreCapitulo += '' + `${audioStr}`;
 		if (subStr) nombreCapitulo += '' + ` ${subStr}`;
 		nombreCapitulo += `\n💾 ${tamano}`;
@@ -351,13 +462,16 @@ async function obtenerNombreEpisodio(episodio, nTemporada, nEpisodio, nombreCarp
 		const audioStr = idiomasAudio.length ? `🔊 ${idiomasAudio.map(a => utilidadesString.toSmallCaps(a)).join(" / ")}` : null;
 		const subStr = idiomaSubstitulos.length ? `🔤 ${idiomaSubstitulos.map(s => utilidadesString.toSmallCaps(s)).join(" / ")}` : null;
 
-		nombreCapitulo = `${nombreCarpetaSerie} ${numeracionEpisodio}\n` +
-						 `📺 ${resolucion}\n` +
-						 `💾 ${tamano}`;
+		nombreCapitulo = `${nombreCarpeta}`;
+		if (numeracionEpisodio)
+			nombreCapitulo += ` ${numeracionEpisodio}`;
+		nombreCapitulo += `\n`;
+		nombreCapitulo += `📺 ${resolucion}\n`;
+		nombreCapitulo += `💾 ${tamano}`;
+
 		const idiomasPistas = [audioStr, subStr].filter(Boolean).join(" ");
 		if (idiomasPistas) nombreCapitulo += `\n${idiomasPistas}`;
 	}
 
 	return nombreCapitulo;
 }
-
