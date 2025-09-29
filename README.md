@@ -2,7 +2,7 @@
 
 # 🎬 Stremio Addon Local Files
 
-Servidor en Node.js para Stremio que obtiene contenido mediante streaming alojado en local, desde el directorio donde se ejecute el servidor. Permite acceder a películas y series mediante tu red local y servirlas en Stremio en LAN.
+Servidor en Node.js para Stremio que sirve contenido alojado en local mediante streaming en LAN. Permite acceder a películas y series en Stremio mediante tu red local y servirlas en LAN.
 
 ---
 

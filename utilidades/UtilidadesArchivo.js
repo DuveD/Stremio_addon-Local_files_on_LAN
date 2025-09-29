@@ -69,62 +69,61 @@ function obtenerResolucion(filePath) {
 	});
 }
 
+function procesarPistas(tracks) {
+	const audio = [];
+	const sub = [];
+
+	for (const track of tracks) {
+		if (track.type === "audio" || track.type === "subtitles") {
+			let lang = (track.properties?.language ?? "und").toLowerCase();
+			let trackName = (track.properties?.track_name ?? "").toLowerCase();
+
+			// Prioridad: track_name > language
+			if (trackName.includes("castellano") || trackName.includes("cast")) {
+				lang = "Esp";
+			} else if (trackName.includes("latino") || trackName.includes("lat")) {
+				lang = "Lat";
+			} else if (lang === "spa") {
+				lang = "Esp";
+			} else if (["esl", "es-la", "lat"].includes(lang)) {
+				lang = "Lat";
+			} else {
+				lang = lang.toUpperCase();
+			}
+
+			if (track.type === "audio" && !audio.includes(lang)) {
+				audio.push(lang);
+			}
+			if (track.type === "subtitles" && !sub.includes(lang)) {
+				sub.push(lang);
+			}
+		}
+	}
+
+	return { audio, sub };
+}
+
 function obtenerIdiomasPistas(filePath) {
 	return new Promise((resolve, reject) => {
-		if (filePath.endsWith(EXTENSION_MKV)) {
-			execFile(
-				"mkvmerge",
-				["-J", filePath],
-				{ maxBuffer: 1024 * 1024 * 10 },
-				(err, stdout) => {
-					if (err) return resolve({ audio: [], sub: [] }); // Si falla, devuelve vacío
-					try {
-						const json = JSON.parse(stdout);
-						const audio = [];
-						const sub = [];
-						for (const track of json.tracks) {
-							if (track.type === "audio" || track.type === "subtitles") {
-								let lang = (track.properties?.language ?? "und").toLowerCase();
+		const isMKV = filePath.endsWith(EXTENSION_MKV);
+		if (!isMKV) return resolve(null);
 
-								let trackName = (
-									track.properties?.track_name ?? ""
-								).toLowerCase();
+		const command = "mkvmerge";
+		const args = ["-J", filePath];
+		const options = { maxBuffer: 1024 * 1024 * 10 };
 
-								// Prioridad: track_name > language
-								if (
-									trackName.includes("castellano") ||
-									trackName.includes("cast")
-								) {
-									lang = "Esp";
-								} else if (
-									trackName.includes("latino") ||
-									trackName.includes("lat")
-								) {
-									lang = "Lat";
-								} else if (lang === "spa") {
-									lang = "Esp";
-								} else if (["esl", "es-la", "lat"].includes(lang)) {
-									lang = "Lat";
-								} else {
-									lang = lang.toUpperCase();
-								}
+		execFile(command, args, options, (err, stdout) => {
+			if (err) return resolve({ audio: [], sub: [] }); // Si falla, devuelve vacío
 
-								if (track.type === "audio" && !audio.includes(lang))
-									audio.push(lang);
-								if (track.type === "subtitles" && !sub.includes(lang))
-									sub.push(lang);
-							}
-						}
-						resolve({ audio, sub });
-					} catch (e) {
-						utilidadesLog.logError("Error al parsear JSON de mkvmerge:", e);
-						resolve({ audio: [], sub: [] });
-					}
-				}
-			);
-		} else {
-			resolve(null);
-		}
+			try {
+				const json = JSON.parse(stdout);
+				const { audio, sub } = procesarPistas(json.tracks);
+				resolve({ audio, sub });
+			} catch (e) {
+				utilidadesLog.logError("Error al parsear JSON de mkvmerge:", e);
+				resolve({ audio: [], sub: [] });
+			}
+		});
 	});
 }
 

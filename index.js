@@ -1,4 +1,3 @@
-
 // Módulos nativos
 const fs = require("fs");
 const path = require("path");
@@ -6,14 +5,14 @@ const path = require("path");
 // Módulos de terceros
 require("dotenv").config();
 const express = require("express");
-const { StatusCodes, getReasonPhrase } = require('http-status-codes');
+const { StatusCodes, getReasonPhrase } = require("http-status-codes");
 
 // Módulos locales
-const utilidadesArchivo = 	require("./utilidades/UtilidadesArchivo.js");
-const utilidadesEntorno = 	require("./utilidades/UtilidadesEntorno.js");
-const utilidadesLog = 		require("./utilidades/UtilidadesLog.js");
-const utilidadesRed = 		require("./utilidades/UtilidadesRed.js");
-const utilidadesString = 	require("./utilidades/UtilidadesString.js");
+const utilidadesArchivo = require("./utilidades/UtilidadesArchivo.js");
+const utilidadesEntorno = require("./utilidades/UtilidadesEntorno.js");
+const utilidadesLog = require("./utilidades/UtilidadesLog.js");
+const utilidadesRed = require("./utilidades/UtilidadesRed.js");
+const utilidadesString = require("./utilidades/UtilidadesString.js");
 
 const CONTENT_TYPE_SERIES = "series";
 const CONTENT_TYPE_MOVIE = "movie";
@@ -21,9 +20,9 @@ const CONTENT_TYPE_MOVIE = "movie";
 // Manifest mínimo para Stremio
 const manifest = {
 	id: "org.localAddon.localLanStreaming",
-	version: "3.1.0",
+	version: "3.2.0",
 	name: "Local LAN Streaming",
-	description: "Addon para servir contenido almacenado en red local.",
+	description: "Addon para servir contenido almacenado en local mediante red local.",
 	resources: ["stream"],
 	types: [CONTENT_TYPE_SERIES, CONTENT_TYPE_MOVIE],
 	idPrefixes: ["tt"],
@@ -55,7 +54,10 @@ const OMDB_CACHE_TTL = 1000 * 60 * 60 * 6;
 const SERIES_DIR = utilidadesEntorno.cargarVariable("SERIES_DIR");
 const PELICULAS_DIR = utilidadesEntorno.cargarVariable("PELICULAS_DIR");
 const PORT = utilidadesEntorno.cargarVariable("PORT");
-const FORMATO_NOMBRE_SIMPLIFICADO = utilidadesEntorno.cargarVariableBoolean("FORMATO_NOMBRE_SIMPLIFICADO", false);
+const FORMATO_NOMBRE_SIMPLIFICADO = utilidadesEntorno.cargarVariableBoolean(
+	"FORMATO_NOMBRE_SIMPLIFICADO",
+	false
+);
 const OMDB_API_KEY = utilidadesEntorno.cargarVariable("OMDB_API_KEY");
 
 const localIP = utilidadesRed.obtenerIPLocal();
@@ -75,27 +77,33 @@ function cargarMapa(type) {
 		informarMapGlobal = (data) => (PELICULAS_MAP = data);
 	}
 
-	let mapa = null
+	let mapa = null;
 	try {
 		if (fs.existsSync(mediaPath)) {
 			mapa = JSON.parse(fs.readFileSync(mediaPath, "utf8"));
 			var nEntradas = Object.keys(mapa).length;
 
-			const mensajeInfoLog = utilidadesLog.formatInfoLog(`'${nombreMapa}' actualizado: ${nEntradas} entradas.`);
+			const mensajeInfoLog = utilidadesLog.formatInfoLog(
+				`'${nombreMapa}' actualizado: ${nEntradas} entradas.`
+			);
 			console.log(mensajeInfoLog);
 		} else {
 			mapa = {};
 
-			const mensajeWarnLog = utilidadesLog.formatWarnLog(`No existe '${nombreMapa}'.`);
+			const mensajeWarnLog = utilidadesLog.formatWarnLog(
+				`No existe '${nombreMapa}'.`
+			);
 			console.warn(mensajeWarnLog);
 		}
 	} catch (err) {
 		mapa = {};
 
-		const mensajeErrorLog = utilidadesLog.formatErrorLog(`Falló la carga de '${nombreMapa}': ${err}`)
+		const mensajeErrorLog = utilidadesLog.formatErrorLog(
+			`Falló la carga de '${nombreMapa}': ${err}`
+		);
 		console.error(mensajeErrorLog);
 	}
-	
+
 	informarMapGlobal(mapa);
 }
 
@@ -162,7 +170,10 @@ app.use((req, res, next) => {
 });
 
 app.get("/manifest.json", (req, res) => {
-	const mensajeInfoLog = utilidadesLog.formatInfoLog(`Se solicitó el manifest`,`REQUEST`);
+	const mensajeInfoLog = utilidadesLog.formatInfoLog(
+		`Se solicitó el manifest`,
+		`REQUEST`
+	);
 	console.log(mensajeInfoLog);
 
 	res.setHeader("Content-Type", "application/json");
@@ -170,53 +181,72 @@ app.get("/manifest.json", (req, res) => {
 });
 
 async function agregarSerieDesdeImdb(type, imdbId, nombreCarpeta) {
-    let mediaPath = null;
-	let mapa = null
+	let mediaPath = null;
+	let mapa = null;
 	let nombreMapa = null;
+	let agregarSerie = null;
 	if (type === CONTENT_TYPE_SERIES) {
 		mediaPath = SERIES_DIR;
 		nombreMapa = SERIES_MAP_FILE_NAME;
 		mapa = SERIES_MAP;
+		agregarSerie = (imdbId, nombreCarpeta) =>
+			(SERIES_MAP[imdbId] = nombreCarpeta);
 	} else if (type === CONTENT_TYPE_MOVIE) {
 		mediaPath = PELICULAS_DIR;
 		nombreMapa = PELICULAS_MAP_FILE_NAME;
 		mapa = PELICULAS_MAP;
+		agregarSerie = (imdbId, nombreCarpeta) =>
+			(PELICULAS_MAP[imdbId] = nombreCarpeta);
 	}
 
 	try {
-        let seriesMap = {};
-        if (fs.existsSync(nombreMapa)) {
-            seriesMap = JSON.parse(fs.readFileSync(nombreMapa, "utf8"));
-        }
+		let seriesMap = {};
+		if (fs.existsSync(nombreMapa)) {
+			seriesMap = JSON.parse(fs.readFileSync(nombreMapa, "utf8"));
+		}
 
-        if (Object.values(seriesMap).includes(imdbId)) {
-			const mensajeInfoLog = utilidadesLog.formatInfoLog(`El imdbId ${imdbId} ya existe en el mapa '${nombreMapa}', no se añadirá de nuevo.`, `IMDB`);
+		if (seriesMap[imdbId]) {
+			const mensajeInfoLog = utilidadesLog.formatInfoLog(
+				`El imdbId ${imdbId} ya existe en el mapa '${nombreMapa}', no se añadirá de nuevo.`,
+				`IMDB`
+			);
 			console.log(mensajeInfoLog);
 
-            return false;
-        }
+			return false;
+		}
 
-        seriesMap[nombreCarpeta] = imdbId;
-        fs.writeFileSync(nombreMapa, JSON.stringify(seriesMap, null, 2), "utf8");
+		seriesMap[imdbId] = nombreCarpeta;
+		fs.writeFileSync(nombreMapa, JSON.stringify(seriesMap, null, 2), "utf8");
 
-		const mensajeInfoLog = utilidadesLog.formatInfoLog(`Se ha añadido la entrada "${nombreCarpeta}" : "${imdbId}" al mapa '${nombreMapa}'.`, `IMDB`);
-        console.log(mensajeInfoLog);
+		agregarSerie(imdbId, nombreCarpeta);
 
-        return true;
+		const mensajeInfoLog = utilidadesLog.formatInfoLog(
+			`Se ha añadido la entrada "${nombreCarpeta}" : "${imdbId}" al mapa '${nombreMapa}'.`,
+			`IMDB`
+		);
+		console.log(mensajeInfoLog);
 
-    } catch (err) {
-		const mensajeErrorLog = utilidadesLog.formatInfoLog(`Error al añadir la entrada "${nombreCarpeta}" : "${imdbId}" al mapa '${nombreMapa}': ${err}`, `IMDB`);
-        console.error(mensajeErrorLog);
-		
-        return false;
-    }
+		return true;
+	} catch (err) {
+		const mensajeErrorLog = utilidadesLog.formatInfoLog(
+			`Error al añadir la entrada "${nombreCarpeta}" : "${imdbId}" al mapa '${nombreMapa}': ${err}`,
+			`IMDB`
+		);
+		console.error(mensajeErrorLog);
+
+		return false;
+	}
 }
 
-async function obtenerCarpetaDesdeIdmdbId(type, imdbId, recargarMapaSiFalla = true) {
+async function obtenerCarpetaDesdeIdmdbId(
+	type,
+	imdbId,
+	recargarMapaSiFalla = true
+) {
 	let carpeta = null;
 
 	let mediaPath = null;
-	let mapa = null
+	let mapa = null;
 	let nombreMapa = null;
 	if (type === CONTENT_TYPE_SERIES) {
 		mediaPath = SERIES_DIR;
@@ -229,24 +259,21 @@ async function obtenerCarpetaDesdeIdmdbId(type, imdbId, recargarMapaSiFalla = tr
 	}
 
 	if (mapa) {
-		carpeta = Object.keys(mapa).find(f => mapa[f] === imdbId);
+		carpeta = mapa[imdbId];
 	}
 
-	if(carpeta) 
-	{
+	if (carpeta) {
 		return carpeta;
-	}
-	else if(recargarMapaSiFalla) {
+	} else if (recargarMapaSiFalla) {
 		const mensajeWarnLog = utilidadesLog.formatWarnLog(
 			`IMDb ID ${imdbId} no encontrado en '${nombreMapa}'. Recargando '${nombreMapa}'...`
 		);
 		console.warn(mensajeWarnLog);
-		
+
 		cargarMapa(type);
-		
+
 		return await obtenerCarpetaDesdeIdmdbId(type, imdbId, false);
-	}
-	else {
+	} else {
 		const mensajeWarnLog = utilidadesLog.formatWarnLog(
 			`IMDb ID ${imdbId} no encontrado en '${nombreMapa}'. Buscando el id ${imdbId} en omdbapi...`
 		);
@@ -254,27 +281,25 @@ async function obtenerCarpetaDesdeIdmdbId(type, imdbId, recargarMapaSiFalla = tr
 
 		const tituloIdmdb = await obtenerTituloDesdeImdbId(imdbId);
 
-		if(tituloIdmdb) {
+		if (tituloIdmdb) {
 			let pathLocal = path.join(mediaPath, tituloIdmdb);
-			if(fs.existsSync(pathLocal)) {
+			if (fs.existsSync(pathLocal)) {
 				const mensajeInfoLog = utilidadesLog.formatInfoLog(
 					`IMDb ID ${imdbId} encontrado en el servidor por título: '${tituloIdmdb}'`
 				);
 				console.log(mensajeInfoLog);
-				
+
 				agregarSerieDesdeImdb(type, imdbId, tituloIdmdb);
 
 				return tituloIdmdb;
-			}
-			else {
+			} else {
 				const mensajeWarnLog = utilidadesLog.formatWarnLog(
 					`IMDb ID ${imdbId} con título '${tituloIdmdb}' no encontrado en el servidor.`
 				);
 				console.warn(mensajeWarnLog);
 				return null;
 			}
-		}
-		else {
+		} else {
 			const mensajeWarnLog = utilidadesLog.formatWarnLog(
 				`IMDb ID ${imdbId} no encontrado en '${nombreMapa}'`
 			);
@@ -286,55 +311,62 @@ async function obtenerCarpetaDesdeIdmdbId(type, imdbId, recargarMapaSiFalla = tr
 }
 
 async function obtenerTituloDesdeImdbId(imdbId) {
-    if (!imdbId) return null;
+	if (!imdbId) return null;
 
-    // Normalizar
-    imdbId = String(imdbId).trim();
+	// Normalizar
+	imdbId = String(imdbId).trim();
 
-    // Comprueba cache
-    const cached = omdbCache.get(imdbId);
-    const ahora = Date.now();
-    if (cached && cached.expiresAt > ahora) {
-        return cached.value; // puede ser string o null
-    }
+	// Comprueba cache
+	const cached = omdbCache.get(imdbId);
+	const ahora = Date.now();
+	if (cached && cached.expiresAt > ahora) {
+		return cached.value; // puede ser string o null
+	}
 
-    // Si no hay API key, devolvemos null (para no romper flujo)
-    if (!OMDB_API_KEY) {
-        console.warn(`OMDb API key no configurada (OMDB_API_KEY). No se consultará OMDb para ${imdbId}.`);
-        return null;
-    }
+	// Si no hay API key, devolvemos null (para no romper flujo)
+	if (!OMDB_API_KEY) {
+		console.warn(
+			`OMDb API key no configurada (OMDB_API_KEY). No se consultará OMDb para ${imdbId}.`
+		);
+		return null;
+	}
 
-    const url = `http://www.omdbapi.com/?i=${encodeURIComponent(imdbId)}&r=json&apikey=${OMDB_API_KEY}`;
+	const url = `http://www.omdbapi.com/?i=${encodeURIComponent(
+		imdbId
+	)}&r=json&apikey=${OMDB_API_KEY}`;
 
-    try {
-        // Si usas Node <18 instala node-fetch y cambia fetch por require('node-fetch')
-        const res = await fetch(url, { method: "GET" });
-        if (!res.ok) {
-            console.warn(`OMDb: respuesta no OK para ${imdbId}: ${res.status}`);
-            omdbCache.set(imdbId, { value: null, expiresAt: ahora + 1000 * 60 * 5 });
-            return null;
-        }
+	try {
+		// Si usas Node <18 instala node-fetch y cambia fetch por require('node-fetch')
+		const res = await fetch(url, { method: "GET" });
+		if (!res.ok) {
+			console.warn(`OMDb: respuesta no OK para ${imdbId}: ${res.status}`);
+			omdbCache.set(imdbId, { value: null, expiresAt: ahora + 1000 * 60 * 5 });
+			return null;
+		}
 
-        const data = await res.json();
+		const data = await res.json();
 
-        if (data && data.Response === "True") {
-            const title = data.Title || null;
-            // Guardar en cache
-            omdbCache.set(imdbId, { value: title, expiresAt: ahora + OMDB_CACHE_TTL });
-            return title;
-        } else {
-            // Cuando OMDb responde { Response: "False", Error: "Movie not found!" }
-            const errMsg = data && data.Error ? data.Error : "No encontrado";
-            console.warn(`OMDb: ${errMsg} para ${imdbId}`);
-            omdbCache.set(imdbId, { value: null, expiresAt: ahora + 1000 * 60 * 30 }); // cache corto
-            return null;
-        }
-    } catch (err) {
-        console.error(`Error consultando OMDb para ${imdbId}: ${err}`);
-        // cacheeo temporal para evitar reintentos rápidos
-        omdbCache.set(imdbId, { value: null, expiresAt: ahora + 1000 * 60 * 5 });
-        return null;
-    }
+		if (data && data.Response === "True") {
+			const title = data.Title || null;
+			// Guardar en cache
+			omdbCache.set(imdbId, {
+				value: title,
+				expiresAt: ahora + OMDB_CACHE_TTL,
+			});
+			return title;
+		} else {
+			// Cuando OMDb responde { Response: "False", Error: "Movie not found!" }
+			const errMsg = data && data.Error ? data.Error : "No encontrado";
+			console.warn(`OMDb: ${errMsg} para ${imdbId}`);
+			omdbCache.set(imdbId, { value: null, expiresAt: ahora + 1000 * 60 * 30 }); // cache corto
+			return null;
+		}
+	} catch (err) {
+		console.error(`Error consultando OMDb para ${imdbId}: ${err}`);
+		// cacheeo temporal para evitar reintentos rápidos
+		omdbCache.set(imdbId, { value: null, expiresAt: ahora + 1000 * 60 * 5 });
+		return null;
+	}
 }
 
 // Endpoint de streams
@@ -342,11 +374,20 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 	const { type, id } = req.params;
 
 	if (!type || !id) {
-        return res.status(StatusCodes.BAD_REQUEST).json({ error: "Parámetros inválidos." });
-    }
+		const mensajeWarningLog = utilidadesLog.formatInfoLog(
+			`Parámetros inválidos para la request de stream para ${type} con id: ${id}`,
+			`REQUEST`
+		);
+		console.warn(mensajeWarningLog);
+
+		return res
+			.status(StatusCodes.BAD_REQUEST)
+			.json({ error: "Parámetros inválidos." });
+	}
 
 	const mensajeInfoLog = utilidadesLog.formatInfoLog(
-		`Request de stream para ${type} con id: ${id}`,`REQUEST`
+		`Request de stream para ${type} con id: ${id}`,
+		`REQUEST`
 	);
 	console.log(mensajeInfoLog);
 
@@ -361,57 +402,72 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 
 		if (!nombreCarpetaSerie) {
 			const mensajeWarnLog = utilidadesLog.formatWarnLog(
-				`IMDb ID ${imdbId} no encontrado en el servidor`,`REQUEST`
+				`IMDb ID ${imdbId} no encontrado en el servidor`,
+				`REQUEST`
 			);
 			console.warn(mensajeWarnLog);
 
 			return res
 				.status(StatusCodes.NOT_FOUND)
-				.json({ error: `IMDb ID ${imdbId} no encontrado en el servidor.`});
-		} else {
-			const episodios = buscarEpisodios(nombreCarpetaSerie);
-			const episodio = episodios.find(
-				(e) => e.season === nTemporada && e.episode === nEpisodio
-			);
-			if (episodio) {
-				try {
-					const nombreEinformacionPelicula = await obtenerNombreEInformacionArchivo(episodio.path, nombreCarpetaSerie, nTemporada, nEpisodio);
-
-					streams.push({
-						name: "Local LAN Streaming",
-						title: nombreEinformacionPelicula,
-						url: `http://${localIP}:${PORT}/file/${encodeURIComponent(
-							episodio.path
-						)}`,
-					});
-
-					const mensajeInfoLog = utilidadesLog.formatInfoLog(
-						`Episodio encontrado: ${episodio.file}`,`REQUEST`
-					);
-					console.log(mensajeInfoLog);
-				} catch (err) {
-					const mensajeErrorLog = utilidadesLog.formatErrorLog(
-						`Error al obtener metadatos del archivo ${episodio.file}: ${err}`,`REQUEST`
-					);	
-					console.error(mensajeErrorLog);
-
-					return res
-						.status(StatusCodes.INTERNAL_SERVER_ERROR)
-						.json({ error: `No se pudo procesar el archivo ${episodio.file}.`});
-				}
-			} else {
-				const mensajeWarnLog = utilidadesLog.formatWarnLog(
-					`Episodio S${nTemporada}E${nEpisodio} no encontrado en la carpeta ${nombreCarpetaSerie}. `,`REQUEST`
-				);
-				console.warn(mensajeWarnLog);
-
-				return res.status(StatusCodes.NOT_FOUND).json({
-					error: `Episodio S${nTemporada}E${nEpisodio} no encontrado en el servidor.`,
-				});
-			}
+				.json({ error: `IMDb ID ${imdbId} no encontrado en el servidor.` });
 		}
-	}
-	else if (type === CONTENT_TYPE_MOVIE) {
+
+		const episodios = buscarEpisodios(nombreCarpetaSerie);
+		const episodio = episodios.find(
+			(e) => e.season === nTemporada && e.episode === nEpisodio
+		);
+
+		if (!episodio) {
+			const mensajeWarnLog = utilidadesLog.formatWarnLog(
+				`Episodio S${nTemporada}E${nEpisodio} no encontrado en la carpeta ${nombreCarpetaSerie}. `,
+				`REQUEST`
+			);
+			console.warn(mensajeWarnLog);
+
+			return res.status(StatusCodes.NOT_FOUND).json({
+				error: `Episodio S${nTemporada}E${nEpisodio} para el IMDb ID ${imdbId} no encontrado en el servidor.`,
+			});
+		}
+
+		let nombreEinformacionPelicula;
+		try {
+			nombreEinformacionPelicula = await obtenerNombreEInformacionArchivo(
+				episodio.path,
+				nombreCarpetaSerie,
+				nTemporada,
+				nEpisodio
+			);
+		} catch (err) {
+			const mensajeErrorLog = utilidadesLog.formatErrorLog(
+				`Error al obtener los datos del archivo ${episodio.file}: ${err}`,
+				`REQUEST`
+			);
+			console.error(mensajeErrorLog);
+
+			return res
+				.status(StatusCodes.INTERNAL_SERVER_ERROR)
+				.json({
+					error: `No se pudo procesar el archivo del episodio para IMDb ID ${imdbId}.`,
+				});
+		}
+
+		streams.push({
+			name: manifest.name,
+			title: nombreEinformacionPelicula,
+			url: `http://${localIP}:${PORT}/file/${encodeURIComponent(
+				episodio.path
+			)}`,
+		});
+
+		const mensajeInfoLog = utilidadesLog.formatInfoLog(
+			`Episodio encontrado: ${episodio.file}`,
+			`REQUEST`
+		);
+		console.log(mensajeInfoLog);
+
+		res.setHeader("Content-Type", "application/json");
+		return res.status(StatusCodes.OK).json({ streams });
+	} else if (type === CONTENT_TYPE_MOVIE) {
 		const imdbId = id;
 
 		// Aquí tendrías que tener un map similar a SERIES_MAP para películas
@@ -419,50 +475,82 @@ app.get("/stream/:type/:id.json", async (req, res) => {
 
 		if (!nombreCarpetaPelicula) {
 			const mensajeWarnLog = utilidadesLog.formatWarnLog(
-				`IMDb ID ${imdbId} no encontrado en el servidor`,`REQUEST`
+				`IMDb ID ${imdbId} no encontrado en el servidor`,
+				`REQUEST`
 			);
 			console.warn(mensajeWarnLog);
 
 			return res
 				.status(StatusCodes.NOT_FOUND)
-				.json({ error: `IMDb ID ${imdbId} no encontrado en el servidor.`});
+				.json({ error: `IMDb ID ${imdbId} no encontrado en el servidor.` });
 		}
-		else
-		{
-			// Buscar archivo de video en la carpeta de la película
-			const pathCompletoCarpetaPelicula = path.join(PELICULAS_DIR, nombreCarpetaPelicula);
-			const pathCarpetaPelicula = fs.readdirSync(pathCompletoCarpetaPelicula);
-			const nombreArchivo = pathCarpetaPelicula.find((f) => f.endsWith(".mp4") || f.endsWith(".mkv"));
-			const pathCompletoPelicula = path.join(pathCompletoCarpetaPelicula, nombreArchivo);
 
-			const nombreEinformacionPelicula = await obtenerNombreEInformacionArchivo(pathCompletoPelicula, nombreCarpetaPelicula);
+		// Buscar archivo de video en la carpeta de la película
+		const pathCompletoCarpetaPelicula = path.join(
+			PELICULAS_DIR,
+			nombreCarpetaPelicula
+		);
+		const pathCarpetaPelicula = fs.readdirSync(pathCompletoCarpetaPelicula);
+		const nombreArchivo = pathCarpetaPelicula.find(
+			(f) => f.endsWith(".mp4") || f.endsWith(".mkv")
+		);
 
-			// Si encontramos más de uno, lanzamos error y avisamos al usuario.
-			if (!nombreArchivo) {
-				const mensajeWarnLog = utilidadesLog.formatWarnLog(
-					`No se encontró archivo de video para IMDb ID ${imdbId} en la carpeta ${nombreCarpetaPelicula}.`,`REQUEST`
-				);
-				console.warn(mensajeWarnLog);
-				return res.status(StatusCodes.NOT_FOUND).json({
-					error: `No se encontró archivo de video para IMDb ID ${imdbId} en el servidor.`
-				});
-			}
-
-			const filePath = path.join(PELICULAS_DIR, nombreCarpetaPelicula, nombreArchivo);
-
-			streams.push({
-				name: "Local LAN Streaming",
-				title: nombreEinformacionPelicula,
-				url: `http://${localIP}:${PORT}/file/${encodeURIComponent(filePath)}`
+		if (!nombreArchivo) {
+			const mensajeWarnLog = utilidadesLog.formatWarnLog(
+				`No se encontró archivo de video para IMDb ID ${imdbId} en la carpeta ${nombreCarpetaPelicula}.`,
+				`REQUEST`
+			);
+			console.warn(mensajeWarnLog);
+			return res.status(StatusCodes.NOT_FOUND).json({
+				error: `No se encontró archivo de video para IMDb ID ${imdbId} en el servidor.`,
 			});
 		}
-	}
-	else {
-		return res.status(StatusCodes.BAD_REQUEST).json({ error: `Tipo ${type} no soportado.` });
-	}
 
-	res.setHeader("Content-Type", "application/json");
-	res.end(JSON.stringify({ streams }));
+		let nombreEinformacionPelicula;
+		let filePath;
+		try {
+			const pathCompletoPelicula = path.join(
+				pathCompletoCarpetaPelicula,
+				nombreArchivo
+			);
+			nombreEinformacionPelicula = await obtenerNombreEInformacionArchivo(
+				pathCompletoPelicula,
+				nombreCarpetaPelicula
+			);
+			filePath = path.join(PELICULAS_DIR, nombreCarpetaPelicula, nombreArchivo);
+		} catch (err) {
+			const mensajeErrorLog = utilidadesLog.formatErrorLog(
+				`Error al obtener metadatos del archivo ${nombreArchivo}: ${err}`,
+				`REQUEST`
+			);
+			console.error(mensajeErrorLog);
+
+			return res
+				.status(StatusCodes.INTERNAL_SERVER_ERROR)
+				.json({
+					error: `No se pudo procesar el archivo de la película para IMDb ID ${imdbId}.`,
+				});
+		}
+
+		streams.push({
+			name: manifest.name,
+			title: nombreEinformacionPelicula,
+			url: `http://${localIP}:${PORT}/file/${encodeURIComponent(filePath)}`,
+		});
+
+		const mensajeInfoLog = utilidadesLog.formatInfoLog(
+			`Película encontrada: ${nombreArchivo}`,
+			`REQUEST`
+		);
+		console.log(mensajeInfoLog);
+
+		res.setHeader("Content-Type", "application/json");
+		return res.status(StatusCodes.OK).json({ streams });
+	} else {
+		return res
+			.status(StatusCodes.BAD_REQUEST)
+			.json({ error: `Tipo ${type} no soportado.` });
+	}
 });
 
 // Endpoint de archivos con soporte de chunks
@@ -470,19 +558,24 @@ app.get("/file/:filePath", (req, res) => {
 	const filePath = decodeURIComponent(req.params.filePath);
 	const fileName = path.basename(filePath);
 
-    // Seguridad: Solo permitir archivos dentro de SERIES_DIR o PELICULAS_DIR
+	// Seguridad: Solo permitir archivos dentro de SERIES_DIR o PELICULAS_DIR
 	const absFilePath = path.resolve(filePath);
-    const isInSeries = absFilePath.startsWith(path.resolve(SERIES_DIR) + path.sep);
-    const isInPeliculas = absFilePath.startsWith(path.resolve(PELICULAS_DIR) + path.sep);
+	const isInSeries = absFilePath.startsWith(
+		path.resolve(SERIES_DIR) + path.sep
+	);
+	const isInPeliculas = absFilePath.startsWith(
+		path.resolve(PELICULAS_DIR) + path.sep
+	);
 
-    if (!isInSeries && !isInPeliculas) {
+	if (!isInSeries && !isInPeliculas) {
 		const mensajeWarnLog = utilidadesLog.formatWarnLog(
-			`Intento de acceso a archivo fuera de las carpetas permitidas: ${filePath}`,`SECURITY`
+			`Intento de acceso a archivo fuera de las carpetas permitidas: ${filePath}`,
+			`SECURITY`
 		);
-        console.warn(mensajeWarnLog);
+		console.warn(mensajeWarnLog);
 
-        return res.status(StatusCodes.FORBIDDEN).send("Acceso denegado.");
-    }
+		return res.status(StatusCodes.FORBIDDEN).send("Acceso denegado.");
+	}
 
 	if (!fs.existsSync(filePath))
 		return res.status(StatusCodes.NOT_FOUND).send("Archivo no encontrado.");
@@ -490,6 +583,10 @@ app.get("/file/:filePath", (req, res) => {
 	const stat = fs.statSync(filePath);
 	const fileSize = stat.size;
 	const range = req.headers.range;
+
+	const contentType = filePath.endsWith(".mkv")
+		? "video/x-matroska"
+		: "video/mp4";
 
 	if (range) {
 		const parts = range.replace(/bytes=/, "").split("-");
@@ -499,7 +596,8 @@ app.get("/file/:filePath", (req, res) => {
 		const tamano = utilidadesArchivo.formatearTamano(chunkSize);
 
 		const mensajeInfoLog = utilidadesLog.formatInfoLog(
-			`El cliente ha solicitado un chunk (${fileName} [${start}-${end}]) (${tamano})`,`REQUEST(RANGE)`
+			`El cliente ha solicitado un chunk (${fileName} [${start}-${end}]) (${tamano})`,
+			`REQUEST(RANGE)`
 		);
 		console.log(mensajeInfoLog);
 
@@ -508,9 +606,7 @@ app.get("/file/:filePath", (req, res) => {
 			"Content-Range": `bytes ${start}-${end}/${fileSize}`,
 			"Accept-Ranges": "bytes",
 			"Content-Length": chunkSize,
-			"Content-Type": filePath.endsWith(".mkv")
-				? "video/x-matroska"
-				: "video/mp4",
+			"Content-Type": contentType,
 		};
 		res.writeHead(StatusCodes.PARTIAL_CONTENT, head);
 
@@ -537,14 +633,15 @@ app.get("/file/:filePath", (req, res) => {
 		});
 	} else {
 		const tamano = utilidadesArchivo.formatearTamano(fileSize);
-		const mensajeInfoLog = utilidadesLog.formatInfoLog(`Sirviendo archivo completo: ${path.basename(filePath)} (${tamano})`,`REQUEST(FULL)`);
+		const mensajeInfoLog = utilidadesLog.formatInfoLog(
+			`Sirviendo archivo completo: ${path.basename(filePath)} (${tamano})`,
+			`REQUEST(FULL)`
+		);
 		console.log(mensajeInfoLog);
 
 		const head = {
 			"Content-Length": fileSize,
-			"Content-Type": filePath.endsWith(".mkv")
-				? "video/x-matroska"
-				: "video/mp4",
+			"Content-Type": contentType,
 		};
 		res.writeHead(StatusCodes.OK, head);
 		fs.createReadStream(filePath).pipe(res);
@@ -553,52 +650,77 @@ app.get("/file/:filePath", (req, res) => {
 
 // Iniciar servidor en todas las interfaces
 app.listen(PORT, "0.0.0.0", () => {
-	const mensajeInfoLog = utilidadesLog.formatInfoLog(`Addon corriendo en http://localhost:${PORT}/manifest.json`)
+	const mensajeInfoLog = utilidadesLog.formatInfoLog(
+		`Addon corriendo en http://localhost:${PORT}/manifest.json`
+	);
 	console.log(mensajeInfoLog);
 
-	const mensajeInfoLog2 = utilidadesLog.formatInfoLog(`IP LAN accesible: http://${localIP}:${PORT}/manifest.json`)
+	const mensajeInfoLog2 = utilidadesLog.formatInfoLog(
+		`IP LAN accesible: http://${localIP}:${PORT}/manifest.json`
+	);
 	console.log(mensajeInfoLog2);
 });
 
-async function obtenerNombreEInformacionArchivo(path, nombreCarpeta, nTemporada, nEpisodio) {
+async function obtenerNombreEInformacionArchivo(
+	path,
+	nombreCarpeta,
+	nTemporada,
+	nEpisodio
+) {
 	const stat = fs.statSync(path);
 	const tamano = utilidadesArchivo.formatearTamano(stat.size);
 	const metadatos = await utilidadesArchivo.obtenerMetadatos(path);
 	const resolucion = `${metadatos.height}p`;
 
-	const idiomasAudio = metadatos.idiomas && metadatos.idiomas.audio ? metadatos.idiomas.audio : [];
-	const idiomaSubstitulos = metadatos.idiomas && metadatos.idiomas.subtitulos ? metadatos.idiomas.subtitulos : [];
+	const idiomasAudio =
+		metadatos.idiomas && metadatos.idiomas.audio ? metadatos.idiomas.audio : [];
+	const idiomaSubstitulos =
+		metadatos.idiomas && metadatos.idiomas.subtitulos
+			? metadatos.idiomas.subtitulos
+			: [];
 
 	let numeracionEpisodio = null;
-	if(nTemporada && nEpisodio)
-		numeracionEpisodio = `S${String(nTemporada).padStart(2, "0")} E${String(nEpisodio).padStart(2, "0")}`;
+	if (nTemporada && nEpisodio)
+		numeracionEpisodio = `S${String(nTemporada).padStart(2, "0")} E${String(
+			nEpisodio
+		).padStart(2, "0")}`;
 
 	let nombreCapitulo;
-	if(FORMATO_NOMBRE_SIMPLIFICADO) {
+	if (FORMATO_NOMBRE_SIMPLIFICADO) {
 		let prefijoAudio;
 		if (idiomasAudio.length > 2) prefijoAudio = "Multi";
 		else if (idiomasAudio.length === 2) prefijoAudio = "Dual";
 		else prefijoAudio = "";
 
-		const audioStr = idiomasAudio.length ? ` [${prefijoAudio}: ${idiomasAudio.map(a => a.toUpperCase()).join("/")}]` : null;
-		const subStr = idiomaSubstitulos.length ? `[Sub: ${idiomaSubstitulos.map(s => s.toUpperCase()).join("/")}]` : null;
+		const audioStr = idiomasAudio.length
+			? ` [${prefijoAudio}: ${idiomasAudio
+					.map((a) => a.toUpperCase())
+					.join("/")}]`
+			: null;
+		const subStr = idiomaSubstitulos.length
+			? `[Sub: ${idiomaSubstitulos.map((s) => s.toUpperCase()).join("/")}]`
+			: null;
 
 		nombreCapitulo = `${nombreCarpeta}`;
-		if (numeracionEpisodio)
-			nombreCapitulo += ` ${numeracionEpisodio}`;
+		if (numeracionEpisodio) nombreCapitulo += ` ${numeracionEpisodio}`;
 		nombreCapitulo += ` [${resolucion}]`;
 		nombreCapitulo += ` [${tamano}]`;
-		if (audioStr) nombreCapitulo += '' + `${audioStr}`;
-		if (subStr) nombreCapitulo += '' + ` ${subStr}`;
-		nombreCapitulo += `\n💾 ${tamano}`;
-	}
-	else {
-		const audioStr = idiomasAudio.length ? `🔊 ${idiomasAudio.map(a => utilidadesString.toSmallCaps(a)).join(" / ")}` : null;
-		const subStr = idiomaSubstitulos.length ? `🔤 ${idiomaSubstitulos.map(s => utilidadesString.toSmallCaps(s)).join(" / ")}` : null;
+		if (audioStr) nombreCapitulo += `${audioStr}`;
+		if (subStr) nombreCapitulo += ` ${subStr}`;
+	} else {
+		const audioStr = idiomasAudio.length
+			? `🔊 ${idiomasAudio
+					.map((a) => utilidadesString.toSmallCaps(a))
+					.join(" / ")}`
+			: null;
+		const subStr = idiomaSubstitulos.length
+			? `🔤 ${idiomaSubstitulos
+					.map((s) => utilidadesString.toSmallCaps(s))
+					.join(" / ")}`
+			: null;
 
 		nombreCapitulo = `${nombreCarpeta}`;
-		if (numeracionEpisodio)
-			nombreCapitulo += ` ${numeracionEpisodio}`;
+		if (numeracionEpisodio) nombreCapitulo += ` ${numeracionEpisodio}`;
 		nombreCapitulo += `\n`;
 		nombreCapitulo += `📺 ${resolucion}\n`;
 		nombreCapitulo += `💾 ${tamano}`;
