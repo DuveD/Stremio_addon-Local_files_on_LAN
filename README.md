@@ -31,18 +31,24 @@ Servidor en Node.js para Stremio que sirve contenido alojado en local mediante s
 Copia el archivo `.env.example` a `.env` y completa los parámetros:
 
 ```env
-# Ruta base del contenido a compartir
-SERIES_DIR={directorio local de series}
-PELICULAS_DIR={directorio local de películas}
+# ServidorConfiguración del servidor.
+SERVER_PORT={puero del servidor}
 
-# Puerto del servidor
-PORT={puerto del addon}
+# Directorios de las carpetas de series y películas.
+PATH_CARPETA_SERIES={directorio de la carpeta de series}
+PATH_CARPETA_PELICULAS={directorio de la carpeta de peliculas}
 
-# Otra configuración
-FORMATO_NOMBRE_SIMPLIFICADO={true|false}
+# Archivos de mapeo de carpetas de las series.
+NOMBRE_MAPA_SERIES=series_map.json
+PATH_MAPA_SERIES=./configuracion
+NOMBRE_MAPA_PELICULAS=peliculas_map.json
+PATH_MAPA_PELICULAS=./configuracion
 
-# Clave API para OMDb (opcional, pero recomendado)
-OMDB_API_KEY={tu_clave_aqui}
+# Configuración de nombres.
+FORMATO_NOMBRE_SIMPLIFICADO=true/false
+
+# Clave API para OMDb (https://www.omdbapi.com/apikey.aspx)
+OMDB_API_KEY={api key de omdbapi}
 ```
 
 ---
