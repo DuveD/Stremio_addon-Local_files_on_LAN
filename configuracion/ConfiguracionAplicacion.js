@@ -153,8 +153,8 @@ export default {
   medios: {
     pathCarpetaSeries: PATH_CARPETA_SERIES,
     pathCarpetaPeliculas: PATH_CARPETA_PELICULAS,
-    seriesMap: MAPA_SERIES,
     pathMapaSeries: PATH_MAPA_SERIES + "/" + NOMBRE_MAPA_SERIES,
+    seriesMap: MAPA_SERIES,
     pathMapaPeliculas: PATH_MAPA_PELICULAS + "/" + NOMBRE_MAPA_PELICULAS,
     peliculasMap: MAPA_PELICULAS,
     nombreFormatoSimplificado: NOMBRE_FORMATO_SIMPLIFICADO,
