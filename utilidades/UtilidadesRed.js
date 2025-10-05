@@ -1,6 +1,4 @@
-
-// Módulos nativos
-const os = require("os");
+import os from "os";
 
 // Función para obtener IP Local.
 function obtenerIPLocal() {
@@ -15,6 +13,7 @@ function obtenerIPLocal() {
     return "127.0.0.1";
 }
 
-module.exports = {
+export {
     obtenerIPLocal
 };
+

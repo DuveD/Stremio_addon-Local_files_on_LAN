@@ -14,6 +14,6 @@ function toSmallCaps(str) {
     .join('');
 }
 
-module.exports = {
+export default {
     toSmallCaps
 };

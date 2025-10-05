@@ -1,10 +1,9 @@
-// Módulos de terceros
-const { execFile } = require("child_process");
-const ffmpeg = require("fluent-ffmpeg");
-ffmpeg.setFfprobePath("ffprobe");
+import { execFile } from "child_process";
+import FluentFfmpegPkg from "fluent-ffmpeg";
+import { formatErrorLog } from "../utilidades/UtilidadesLog.js";
+const { setFfprobePath, ffprobe } = FluentFfmpegPkg;
 
-// Módulos locales
-const utilidadesLog = require("./UtilidadesLog.js");
+setFfprobePath("ffprobe");
 
 const EXTENSION_MKV = ".mkv";
 
@@ -30,13 +29,9 @@ async function obtenerMetadatos(filePath) {
 		metadatos.height = null;
 	}
 
-	if (filePath.endsWith(EXTENSION_MKV)) {
-		const idiomas = await obtenerIdiomasPistas(filePath);
-		if (idiomas) {
-			metadatos.idiomas = { audio: idiomas.audio, subtitulos: idiomas.sub };
-		} else {
-			metadatos.idiomas = null;
-		}
+	const idiomas = await obtenerIdiomasPistas(filePath);
+	if (idiomas) {
+		metadatos.idiomas = { audio: idiomas.audio, subtitulos: idiomas.sub };
 	} else {
 		metadatos.idiomas = null;
 	}
@@ -45,8 +40,8 @@ async function obtenerMetadatos(filePath) {
 }
 
 function obtenerResolucion(filePath) {
-	return new Promise((resolve, reject) => {
-		ffmpeg.ffprobe(filePath, (err, metadata) => {
+	return new Promise((resolve) => {
+		ffprobe(filePath, (err, metadata) => {
 			if (err || !metadata || !metadata.streams) {
 				return resolve({
 					width: null,
@@ -104,7 +99,7 @@ function procesarPistas(tracks) {
 }
 
 function obtenerIdiomasPistas(filePath) {
-	return new Promise((resolve, reject) => {
+	return new Promise((resolve) => {
 		const isMKV = filePath.endsWith(EXTENSION_MKV);
 		if (!isMKV) return resolve(null);
 
@@ -120,14 +115,15 @@ function obtenerIdiomasPistas(filePath) {
 				const { audio, sub } = procesarPistas(json.tracks);
 				resolve({ audio, sub });
 			} catch (e) {
-				utilidadesLog.logError("Error al parsear JSON de mkvmerge:", e);
+				const mensajeErrorLog = formatErrorLog("Error al parsear el JSON de mkverge:");
+				logError(mensajeErrorLog, e);
 				resolve({ audio: [], sub: [] });
 			}
 		});
 	});
 }
 
-module.exports = {
+export default {
 	formatearTamano,
 	obtenerMetadatos,
 	obtenerResolucion,

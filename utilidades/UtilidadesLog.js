@@ -1,4 +1,3 @@
-
 // Función para obtener y formatear fecha y hora.
 function obtenerFechaHoraLog() {
     const now = new Date();
@@ -15,14 +14,12 @@ function formatLog(level, mensaje, contexto) {
 }
 
 // Funciones específicas para comodidad
-function formatInfoLog(mensaje, contexto) {
+export function formatInfoLog(mensaje, contexto) {
     return formatLog('INFO', mensaje, contexto);
 }
-function formatWarnLog(mensaje, contexto) {
+export function formatWarnLog(mensaje, contexto) {
     return formatLog('WARN', mensaje, contexto);
 }
-function formatErrorLog(mensaje, contexto) {
+export function formatErrorLog(mensaje, contexto) {
     return formatLog('ERROR', mensaje, contexto);
 }
-
-export { formatInfoLog, formatWarnLog, formatErrorLog };

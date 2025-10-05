@@ -1,12 +1,22 @@
 {
-  "name": "local-addon",
-  "version": "1.0.0",
-  "description": "Addon local para Stremio con series desde el PC",
+  "name": "local-lan-streaming-stremio-addon",
+  "version": "4.0.0",
+  "type": "module",
+  "description": "Addon de Stremio para servir contenido almacenado en local mediante red local.",
+  "author": "DuveD <davidmarinme@gmail.com>",
+  "license": "GPL",
+  "keywords": [
+    "stremio",
+    "addon",
+    "local",
+    "streaming"
+  ],
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
+    "app-root-path": "^3.1.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^4.21.2",
