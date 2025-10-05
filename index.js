@@ -14,9 +14,9 @@ Configuracion.init();
 
 // Manifest mínimo para Stremio
 const manifest = {
-	id: "org.stremioAddon.localLanStreaming",
+	id: "org.stremioAddon.localFilesOnLan",
 	version: packageJson.version,
-	name: "Local LAN Streaming" + (Configuracion.servidor.nombre ? ` [${Configuracion.servidor.nombre}]` : ""),
+	name: "Local Files on LAN" + (Configuracion.servidor.nombre ? ` [${Configuracion.servidor.nombre}]` : ""),
 	description: packageJson.description,
 	resources: ["stream"],
 	types: [Constantes.CONTENT_TYPE_SERIES, Constantes.CONTENT_TYPE_MOVIE],
