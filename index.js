@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2025 Stremio Addon Local Files on LAN
+ *
+ * Este programa es software libre: puedes redistribuirlo y/o modificarlo
+ * bajo los términos de la Licencia Pública General GNU publicada por la
+ * Free Software Foundation, ya sea la versión 3 de la Licencia, o
+ * (a tu elección) cualquier versión posterior.
+ *
+ * Este programa se distribuye con la esperanza de que sea útil,
+ * pero SIN NINGUNA GARANTÍA; incluso sin la garantía implícita de
+ * COMERCIABILIDAD o IDONEIDAD PARA UN PROPÓSITO PARTICULAR. Consulta
+ * la Licencia Pública General GNU para más detalles.
+ *
+ * Deberías haber recibido una copia de la Licencia Pública General GNU
+ * junto con este programa. Si no, consulta <https://www.gnu.org/licenses/>.
+ */
+
 import Dotenv from "dotenv";
 import express from "express";
 import { StatusCodes } from "http-status-codes";
@@ -16,7 +33,7 @@ Configuracion.init();
 const manifest = {
 	id: "org.stremioAddon.localFilesOnLan",
 	version: packageJson.version,
-	name: "Local Files on LAN" + (Configuracion.servidor.nombre ? ` [${Configuracion.servidor.nombre}]` : ""),
+	name: Configuracion.servidor.nombre,
 	description: packageJson.description,
 	resources: ["stream"],
 	types: [Constantes.CONTENT_TYPE_SERIES, Constantes.CONTENT_TYPE_MOVIE],

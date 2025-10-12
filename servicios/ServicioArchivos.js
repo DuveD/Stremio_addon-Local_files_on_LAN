@@ -1,9 +1,10 @@
+import fs from "fs";
+import path from "path";
 import Configuracion from "../configuracion/ConfiguracionAplicacion.js";
 import Constantes from "../constantes/ConstantesGenerales.js";
 import { formatInfoLog, formatWarnLog } from "../utilidades/UtilidadesLog.js";
 
 // Servicios.
-import servicioOMDB from "../servicios/ServicioOMDB.js";
 
 async function obtenerCarpetaDeIdmdbId(
     type,
@@ -41,7 +42,7 @@ async function obtenerCarpetaDeIdmdbId(
         );
         console.warn(mensajeWarnLog);
 
-        const tituloIdmdb = await servicioOMDB.obtenerTituloDeImdbId(imdbId);
+        const tituloIdmdb = await servicioOMDB.obtenerTituloDesdeImdbId(imdbId);
 
         if (tituloIdmdb) {
             let pathLocal = path.join(mediaPath, tituloIdmdb);

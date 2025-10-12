@@ -1,4 +1,3 @@
-// Modulos nativos.
 import { config } from "dotenv";
 import path from "path";
 import url from 'url';

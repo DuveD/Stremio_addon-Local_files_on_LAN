@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, statSync } from "fs";
+import fs from "fs";
 import { StatusCodes } from "http-status-codes";
 import { join } from "path";
 import Configuracion from "../configuracion/ConfiguracionAplicacion.js";
@@ -6,6 +6,7 @@ import Constantes from "../constantes/ConstantesGenerales.js";
 import ServicioArchivos from "../servicios/ServicioArchivos.js";
 import UtilidadesArchivo from "../utilidades/UtilidadesArchivo.js";
 import { formatErrorLog, formatInfoLog, formatWarnLog } from "../utilidades/UtilidadesLog.js";
+import UtilidadesString from "../utilidades/UtilidadesString.js";
 
 export async function streamGetEndpoint(req, res) {
     const { type, id } = req.params;
@@ -125,7 +126,7 @@ export async function streamGetEndpoint(req, res) {
             Configuracion.medios.pathCarpetaPeliculas,
             nombreCarpetaPelicula
         );
-        const pathCarpetaPelicula = readdirSync(pathCompletoCarpetaPelicula);
+        const pathCarpetaPelicula = fs.readdirSync(pathCompletoCarpetaPelicula);
         const nombreArchivo = pathCarpetaPelicula.find(
             (f) => f.endsWith(".mp4") || f.endsWith(".mkv")
         );
@@ -192,7 +193,7 @@ async function obtenerNombreEInformacionArchivo(
 	nTemporada,
 	nEpisodio
 ) {
-	const stat = statSync(path);
+	const stat = fs.statSync(path);
 	const tamano = UtilidadesArchivo.formatearTamano(stat.size);
 	const metadatos = await UtilidadesArchivo.obtenerMetadatos(path);
 	const resolucion = `${metadatos.height}p`;
@@ -235,12 +236,12 @@ async function obtenerNombreEInformacionArchivo(
 	} else {
 		const audioStr = idiomasAudio.length
 			? `🔊 ${idiomasAudio
-					.map((a) => toSmallCaps(a))
+					.map((a) => UtilidadesString.toSmallCaps(a))
 					.join(" / ")}`
 			: null;
 		const subStr = idiomaSubstitulos.length
 			? `🔤 ${idiomaSubstitulos
-					.map((s) => toSmallCaps(s))
+					.map((s) => UtilidadesString.toSmallCaps(s))
 					.join(" / ")}`
 			: null;
 
@@ -263,18 +264,18 @@ function buscarEpisodios(folder) {
     const showPath = join(Configuracion.medios.pathCarpetaSeries, folder);
 
     // Si no existe la carpeta, devolver array vacío.
-    if (!existsSync(showPath)) return [];
+    if (!fs.existsSync(showPath)) return [];
 
     const episodes = [];
 
     // Buscar carpetas que empiecen por "Season" (case insensitive).
-    const seasonDirs = readdirSync(showPath)
+    const seasonDirs = fs.readdirSync(showPath)
         .filter((d) => d.toLowerCase().startsWith("season"));
 
     // Por cada carpeta de temporada, buscar archivos de video.
     seasonDirs.forEach((seasonFolder) => {
         const seasonPath = join(showPath, seasonFolder);
-        const files = readdirSync(seasonPath);
+        const files = fs.readdirSync(seasonPath);
 
         files
             .filter((f) => f.endsWith(".mp4") || f.endsWith(".mkv"))

@@ -8,6 +8,7 @@ import { obtenerIPLocal } from "../utilidades/UtilidadesRed.js";
 // Configuración Servidor.
 const PUERTO_SERVIDOR = cargarVariable("SERVER_PORT");
 const HOSTNAME = hostname();
+const NOMBRE_ADDON = "Local Files on LAN" + (HOSTNAME ? ` [${HOSTNAME}]` : "")
 const IP_LOCAL = obtenerIPLocal();
 
 // Configuración medios.
@@ -146,8 +147,9 @@ export default {
   init,
   servidor: {
     puerto: PUERTO_SERVIDOR,
-    nombre: HOSTNAME,
+    nombreHost: HOSTNAME,
     ip: IP_LOCAL,
+    nombre: NOMBRE_ADDON,
     urlLocal: `http://${IP_LOCAL}:${PUERTO_SERVIDOR}`
   },
   medios: {
