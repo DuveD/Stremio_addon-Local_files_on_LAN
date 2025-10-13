@@ -1,6 +1,6 @@
 import fs from "fs";
 import os from "os";
-import { Constantes } from "../constantes/ConstantesGenerales.js";
+import Constantes from "../constantes/ConstantesGenerales.js";
 import { cargarVariable, cargarVariableBoolean } from "../utilidades/UtilidadesEntorno.js";
 import { formatErrorLog, formatInfoLog, formatWarnLog } from "../utilidades/UtilidadesLog.js";
 import UtilidadesRed from "../utilidades/UtilidadesRed.js";

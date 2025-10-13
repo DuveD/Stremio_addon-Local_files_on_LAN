@@ -1,6 +1,6 @@
 import fs from "fs";
 import { StatusCodes } from "http-status-codes";
-import path from "path";
+import Path from "path";
 import Configuracion from "../configuracion/ConfiguracionAplicacion.js";
 import Constantes from "../constantes/ConstantesGenerales.js";
 import ServicioArchivos from "../servicios/ServicioArchivos.js";
@@ -122,7 +122,7 @@ export async function streamGetEndpoint(req, res) {
         }
 
         // Buscar archivo de video en la carpeta de la película
-        const pathCompletoCarpetaPelicula = path.join(
+        const pathCompletoCarpetaPelicula = Path.join(
             Configuracion.medios.pathCarpetaPeliculas,
             nombreCarpetaPelicula
         );
@@ -145,7 +145,7 @@ export async function streamGetEndpoint(req, res) {
         let nombreEinformacionPelicula;
         let filePath;
         try {
-            const pathCompletoPelicula = path.join(
+            const pathCompletoPelicula = Path.join(
                 pathCompletoCarpetaPelicula,
                 nombreArchivo
             );
@@ -153,7 +153,7 @@ export async function streamGetEndpoint(req, res) {
                 pathCompletoPelicula,
                 nombreCarpetaPelicula
             );
-            filePath = path.join(Configuracion.medios.pathCarpetaPeliculas, nombreCarpetaPelicula, nombreArchivo);
+            filePath = Path.join(Configuracion.medios.pathCarpetaPeliculas, nombreCarpetaPelicula, nombreArchivo);
         } catch (err) {
             const mensajeErrorLog = formatErrorLog(
                 `Error al obtener metadatos del archivo ${nombreArchivo}: ${err}`,
@@ -221,10 +221,10 @@ async function obtenerNombreEInformacionArchivo(
         const audioStr = idiomasAudio.length
             ? ` [${prefijoAudio}: ${idiomasAudio
                 .map((a) => a.toUpperCase())
-                .path.join("/")}]`
+                .join("/")}]`
             : null;
         const subStr = idiomaSubstitulos.length
-            ? `[Sub: ${idiomaSubstitulos.map((s) => s.toUpperCase()).path.join("/")}]`
+            ? `[Sub: ${idiomaSubstitulos.map((s) => s.toUpperCase()).join("/")}]`
             : null;
 
         nombreCapitulo = `${nombreCarpeta}`;
@@ -237,12 +237,12 @@ async function obtenerNombreEInformacionArchivo(
         const audioStr = idiomasAudio.length
             ? `🔊 ${idiomasAudio
                 .map((a) => UtilidadesString.toSmallCaps(a))
-                .path.join(" / ")}`
+                .join(" / ")}`
             : null;
         const subStr = idiomaSubstitulos.length
             ? `🔤 ${idiomaSubstitulos
                 .map((s) => UtilidadesString.toSmallCaps(s))
-                .path.join(" / ")}`
+                .join(" / ")}`
             : null;
 
         nombreCapitulo = `${nombreCarpeta}`;
@@ -251,7 +251,7 @@ async function obtenerNombreEInformacionArchivo(
         nombreCapitulo += `📺 ${resolucion}\n`;
         nombreCapitulo += `💾 ${tamano}`;
 
-        const idiomasPistas = [audioStr, subStr].filter(Boolean).path.join(" ");
+        const idiomasPistas = [audioStr, subStr].filter(Boolean).join(" ");
         if (idiomasPistas) nombreCapitulo += `\n${idiomasPistas}`;
     }
 
@@ -261,7 +261,7 @@ async function obtenerNombreEInformacionArchivo(
 // Buscar episodios por carpeta
 function buscarEpisodios(folder) {
     // Seguridad: evitar rutas con ../
-    const showPath = path.join(Configuracion.medios.pathCarpetaSeries, folder);
+    const showPath = Path.join(Configuracion.medios.pathCarpetaSeries, folder);
 
     // Si no existe la carpeta, devolver array vacío.
     if (!fs.existsSync(showPath)) return [];
@@ -274,7 +274,7 @@ function buscarEpisodios(folder) {
 
     // Por cada carpeta de temporada, buscar archivos de video.
     seasonDirs.forEach((seasonFolder) => {
-        const seasonPath = path.join(showPath, seasonFolder);
+        const seasonPath = Path.join(showPath, seasonFolder);
         const files = fs.readdirSync(seasonPath);
 
         files
@@ -286,7 +286,7 @@ function buscarEpisodios(folder) {
                     season: parseInt(match[1]),
                     episode: parseInt(match[2]),
                     file: f,
-                    path: path.join(seasonPath, f),
+                    path: Path.join(seasonPath, f),
                 });
             });
     });

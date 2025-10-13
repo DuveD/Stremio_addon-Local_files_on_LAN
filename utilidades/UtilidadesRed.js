@@ -13,7 +13,7 @@ function obtenerIPLocal() {
     return "127.0.0.1";
 }
 
-export {
+export default {
     obtenerIPLocal
 };
 
