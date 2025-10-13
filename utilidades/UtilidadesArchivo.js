@@ -112,6 +112,10 @@ function obtenerIdiomasPistas(filePath) {
 			try {
 				const json = JSON.parse(stdout);
 				const { audio, sub } = procesarPistas(json.tracks);
+
+				audio.sort();
+				sub.sort();
+
 				resolve({ audio, sub });
 			} catch (e) {
 				const mensajeErrorLog = formatErrorLog("Error al parsear el JSON de mkverge:");

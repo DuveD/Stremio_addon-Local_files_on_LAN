@@ -250,9 +250,16 @@ async function obtenerNombreEInformacionArchivo(
         nombreCapitulo += `\n`;
         nombreCapitulo += `📺 ${resolucion}\n`;
         nombreCapitulo += `💾 ${tamano}`;
-
-        const idiomasPistas = [audioStr, subStr].filter(Boolean).join(" ");
-        if (idiomasPistas) nombreCapitulo += `\n${idiomasPistas}`;
+        if (audioStr)
+        {
+            nombreCapitulo += `\n${audioStr}`;
+        }
+        if (subStr)
+        {
+            if (!audioStr || idiomasAudio.length > 5) nombreCapitulo += `\n`;
+            else nombreCapitulo += ` `;
+            nombreCapitulo += `${subStr}`;
+        }
     }
 
     return nombreCapitulo;

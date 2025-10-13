@@ -4,11 +4,12 @@ function obtenerFechaHoraLog() {
     return now.toISOString().replace("T", " ").substring(0, 19);
 }
 
-const width = 18;
+const width = 25;
 
 function formatLog(level, mensaje, contexto) {
     let contextoFormateado = contexto ? `[${contexto}]` : ``;
-    contextoFormateado = contextoFormateado.padEnd(width, ' ');
+    const widthContexto = width - level.length - 2; // 2 para los corchetes []
+    contextoFormateado = contextoFormateado.padEnd(widthContexto, ' ');
     const mensajeLog = `[${obtenerFechaHoraLog()}][${level}]${contextoFormateado}: ${mensaje}`;
     return mensajeLog;
 }

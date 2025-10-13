@@ -1,6 +1,6 @@
 {
   "name": "stremio-addon-local-files-on-lan",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "type": "module",
   "description": "Addon de Stremio para servir contenido almacenado en local mediante red LAN.",
   "author": "DuveD <davidmarinme@gmail.com>",

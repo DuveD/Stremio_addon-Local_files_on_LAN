@@ -38,7 +38,10 @@ const manifest = {
 	name: Configuracion.servidor.nombre,
 	description: packageJson.description,
 	resources: ["stream"],
-	types: [Constantes.CONTENT_TYPE_SERIES, Constantes.CONTENT_TYPE_MOVIE],
+	types: [
+		Constantes.CONTENT_TYPE_SERIES,
+		Constantes.CONTENT_TYPE_MOVIE
+	],
 	idPrefixes: ["tt"],
 	behaviorHints: {
 		configurable: false,
@@ -78,7 +81,6 @@ app.get("/manifest.json", (_req, res) => {
 	res.end(JSON.stringify(manifest));
 });
 
-
 // Endpoint de streams
 app.get("/stream/:type/:id.json", streamGetEndpoint);
 
@@ -86,7 +88,7 @@ app.get("/stream/:type/:id.json", streamGetEndpoint);
 app.get("/file/:filePath", fileGetEndpoint);
 
 // Iniciar servidor en todas las interfaces
-app.listen(PORT, "0.0.0.0", () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
 	const mensajeInfoLog = formatInfoLog(
 		`Addon corriendo en http://localhost:${PORT}/manifest.json`,
 		`START`
