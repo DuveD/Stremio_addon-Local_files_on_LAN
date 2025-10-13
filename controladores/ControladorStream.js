@@ -1,6 +1,6 @@
 import fs from "fs";
 import { StatusCodes } from "http-status-codes";
-import { join } from "path";
+import path from "path";
 import Configuracion from "../configuracion/ConfiguracionAplicacion.js";
 import Constantes from "../constantes/ConstantesGenerales.js";
 import ServicioArchivos from "../servicios/ServicioArchivos.js";
@@ -122,7 +122,7 @@ export async function streamGetEndpoint(req, res) {
         }
 
         // Buscar archivo de video en la carpeta de la película
-        const pathCompletoCarpetaPelicula = join(
+        const pathCompletoCarpetaPelicula = path.join(
             Configuracion.medios.pathCarpetaPeliculas,
             nombreCarpetaPelicula
         );
@@ -145,7 +145,7 @@ export async function streamGetEndpoint(req, res) {
         let nombreEinformacionPelicula;
         let filePath;
         try {
-            const pathCompletoPelicula = join(
+            const pathCompletoPelicula = path.join(
                 pathCompletoCarpetaPelicula,
                 nombreArchivo
             );
@@ -153,7 +153,7 @@ export async function streamGetEndpoint(req, res) {
                 pathCompletoPelicula,
                 nombreCarpetaPelicula
             );
-            filePath = join(Configuracion.medios.pathCarpetaPeliculas, nombreCarpetaPelicula, nombreArchivo);
+            filePath = path.join(Configuracion.medios.pathCarpetaPeliculas, nombreCarpetaPelicula, nombreArchivo);
         } catch (err) {
             const mensajeErrorLog = formatErrorLog(
                 `Error al obtener metadatos del archivo ${nombreArchivo}: ${err}`,
@@ -188,80 +188,80 @@ export async function streamGetEndpoint(req, res) {
 }
 
 async function obtenerNombreEInformacionArchivo(
-	path,
-	nombreCarpeta,
-	nTemporada,
-	nEpisodio
+    path,
+    nombreCarpeta,
+    nTemporada,
+    nEpisodio
 ) {
-	const stat = fs.statSync(path);
-	const tamano = UtilidadesArchivo.formatearTamano(stat.size);
-	const metadatos = await UtilidadesArchivo.obtenerMetadatos(path);
-	const resolucion = `${metadatos.height}p`;
+    const stat = fs.statSync(path);
+    const tamano = UtilidadesArchivo.formatearTamano(stat.size);
+    const metadatos = await UtilidadesArchivo.obtenerMetadatos(path);
+    const resolucion = `${metadatos.height}p`;
 
-	const idiomasAudio =
-		metadatos.idiomas && metadatos.idiomas.audio ? metadatos.idiomas.audio : [];
-	const idiomaSubstitulos =
-		metadatos.idiomas && metadatos.idiomas.subtitulos
-			? metadatos.idiomas.subtitulos
-			: [];
+    const idiomasAudio =
+        metadatos.idiomas && metadatos.idiomas.audio ? metadatos.idiomas.audio : [];
+    const idiomaSubstitulos =
+        metadatos.idiomas && metadatos.idiomas.subtitulos
+            ? metadatos.idiomas.subtitulos
+            : [];
 
-	let numeracionEpisodio = null;
-	if (nTemporada && nEpisodio)
-		numeracionEpisodio = `S${String(nTemporada).padStart(2, "0")} E${String(
-			nEpisodio
-		).padStart(2, "0")}`;
+    let numeracionEpisodio = null;
+    if (nTemporada && nEpisodio)
+        numeracionEpisodio = `S${String(nTemporada).padStart(2, "0")} E${String(
+            nEpisodio
+        ).padStart(2, "0")}`;
 
-	let nombreCapitulo;
-	if (Configuracion.medios.nombreFormatoSimplificado) {
-		let prefijoAudio;
-		if (idiomasAudio.length > 2) prefijoAudio = "Multi";
-		else if (idiomasAudio.length === 2) prefijoAudio = "Dual";
-		else prefijoAudio = "";
+    let nombreCapitulo;
+    if (Configuracion.medios.nombreFormatoSimplificado) {
+        let prefijoAudio;
+        if (idiomasAudio.length > 2) prefijoAudio = "Multi";
+        else if (idiomasAudio.length === 2) prefijoAudio = "Dual";
+        else prefijoAudio = "";
 
-		const audioStr = idiomasAudio.length
-			? ` [${prefijoAudio}: ${idiomasAudio
-					.map((a) => a.toUpperCase())
-					.join("/")}]`
-			: null;
-		const subStr = idiomaSubstitulos.length
-			? `[Sub: ${idiomaSubstitulos.map((s) => s.toUpperCase()).join("/")}]`
-			: null;
+        const audioStr = idiomasAudio.length
+            ? ` [${prefijoAudio}: ${idiomasAudio
+                .map((a) => a.toUpperCase())
+                .path.join("/")}]`
+            : null;
+        const subStr = idiomaSubstitulos.length
+            ? `[Sub: ${idiomaSubstitulos.map((s) => s.toUpperCase()).path.join("/")}]`
+            : null;
 
-		nombreCapitulo = `${nombreCarpeta}`;
-		if (numeracionEpisodio) nombreCapitulo += ` ${numeracionEpisodio}`;
-		nombreCapitulo += ` [${resolucion}]`;
-		nombreCapitulo += ` [${tamano}]`;
-		if (audioStr) nombreCapitulo += `${audioStr}`;
-		if (subStr) nombreCapitulo += ` ${subStr}`;
-	} else {
-		const audioStr = idiomasAudio.length
-			? `🔊 ${idiomasAudio
-					.map((a) => UtilidadesString.toSmallCaps(a))
-					.join(" / ")}`
-			: null;
-		const subStr = idiomaSubstitulos.length
-			? `🔤 ${idiomaSubstitulos
-					.map((s) => UtilidadesString.toSmallCaps(s))
-					.join(" / ")}`
-			: null;
+        nombreCapitulo = `${nombreCarpeta}`;
+        if (numeracionEpisodio) nombreCapitulo += ` ${numeracionEpisodio}`;
+        nombreCapitulo += ` [${resolucion}]`;
+        nombreCapitulo += ` [${tamano}]`;
+        if (audioStr) nombreCapitulo += `${audioStr}`;
+        if (subStr) nombreCapitulo += ` ${subStr}`;
+    } else {
+        const audioStr = idiomasAudio.length
+            ? `🔊 ${idiomasAudio
+                .map((a) => UtilidadesString.toSmallCaps(a))
+                .path.join(" / ")}`
+            : null;
+        const subStr = idiomaSubstitulos.length
+            ? `🔤 ${idiomaSubstitulos
+                .map((s) => UtilidadesString.toSmallCaps(s))
+                .path.join(" / ")}`
+            : null;
 
-		nombreCapitulo = `${nombreCarpeta}`;
-		if (numeracionEpisodio) nombreCapitulo += ` ${numeracionEpisodio}`;
-		nombreCapitulo += `\n`;
-		nombreCapitulo += `📺 ${resolucion}\n`;
-		nombreCapitulo += `💾 ${tamano}`;
+        nombreCapitulo = `${nombreCarpeta}`;
+        if (numeracionEpisodio) nombreCapitulo += ` ${numeracionEpisodio}`;
+        nombreCapitulo += `\n`;
+        nombreCapitulo += `📺 ${resolucion}\n`;
+        nombreCapitulo += `💾 ${tamano}`;
 
-		const idiomasPistas = [audioStr, subStr].filter(Boolean).join(" ");
-		if (idiomasPistas) nombreCapitulo += `\n${idiomasPistas}`;
-	}
+        const idiomasPistas = [audioStr, subStr].filter(Boolean).path.join(" ");
+        if (idiomasPistas) nombreCapitulo += `\n${idiomasPistas}`;
+    }
 
-	return nombreCapitulo;
+    return nombreCapitulo;
 }
 
 // Buscar episodios por carpeta
 function buscarEpisodios(folder) {
     // Seguridad: evitar rutas con ../
-    const showPath = join(Configuracion.medios.pathCarpetaSeries, folder);
+    const showPath = path.join(Configuracion.medios.pathCarpetaSeries, folder);
 
     // Si no existe la carpeta, devolver array vacío.
     if (!fs.existsSync(showPath)) return [];
@@ -274,7 +274,7 @@ function buscarEpisodios(folder) {
 
     // Por cada carpeta de temporada, buscar archivos de video.
     seasonDirs.forEach((seasonFolder) => {
-        const seasonPath = join(showPath, seasonFolder);
+        const seasonPath = path.join(showPath, seasonFolder);
         const files = fs.readdirSync(seasonPath);
 
         files
@@ -286,7 +286,7 @@ function buscarEpisodios(folder) {
                     season: parseInt(match[1]),
                     episode: parseInt(match[2]),
                     file: f,
-                    path: join(seasonPath, f),
+                    path: path.join(seasonPath, f),
                 });
             });
     });

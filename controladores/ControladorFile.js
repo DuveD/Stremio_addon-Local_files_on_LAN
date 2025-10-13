@@ -1,21 +1,21 @@
-import { createReadStream, existsSync, statSync } from "fs";
+import fs from "fs";
 import { StatusCodes } from "http-status-codes";
-import { basename, resolve, sep } from "path";
+import path from "path";
 import Configuracion from "../configuracion/ConfiguracionAplicacion.js";
 import UtilidadesArchivo from "../utilidades/UtilidadesArchivo.js";
 import { formatInfoLog, formatWarnLog } from "../utilidades/UtilidadesLog.js";
 
 export async function fileGetEndpoint(req, res) {
 	const filePath = decodeURIComponent(req.params.filePath);
-	const fileName = basename(filePath);
+	const fileName = path.basename(filePath);
 
 	// Seguridad: Solo permitir archivos dentro de SERIES_DIR o PELICULAS_DIR
-	const absFilePath = resolve(filePath);
+	const absFilePath = path.resolve(filePath);
 	const isInSeries = absFilePath.startsWith(
-		resolve(Configuracion.medios.pathCarpetaSeries) + sep
+		path.resolve(Configuracion.medios.pathCarpetaSeries) + path.sep
 	);
 	const isInPeliculas = absFilePath.startsWith(
-		resolve(Configuracion.medios.pathCarpetaPeliculas) + sep
+		path.resolve(Configuracion.medios.pathCarpetaPeliculas) + path.sep
 	);
 
 	if (!isInSeries && !isInPeliculas) {
@@ -28,10 +28,10 @@ export async function fileGetEndpoint(req, res) {
 		return res.status(StatusCodes.FORBIDDEN).send("Acceso denegado.");
 	}
 
-	if (!existsSync(filePath))
+	if (!fs.existsSync(filePath))
 		return res.status(StatusCodes.NOT_FOUND).send("Archivo no encontrado.");
 
-	const stat = statSync(filePath);
+	const stat = fs.statSync(filePath);
 	const fileSize = stat.size;
 	const range = req.headers.range;
 
@@ -52,7 +52,7 @@ export async function fileGetEndpoint(req, res) {
 		);
 		console.log(mensajeInfoLog);
 
-		const file = createReadStream(filePath, { start, end });
+		const file = fs.createReadStream(filePath, { start, end });
 		const head = {
 			"Content-Range": `bytes ${start}-${end}/${fileSize}`,
 			"Accept-Ranges": "bytes",
@@ -85,7 +85,7 @@ export async function fileGetEndpoint(req, res) {
 	} else {
 		const tamano = UtilidadesArchivo.formatearTamano(fileSize);
 		const mensajeInfoLog = formatInfoLog(
-			`Sirviendo archivo completo: ${basename(filePath)} (${tamano})`,
+			`Sirviendo archivo completo: ${path.basename(filePath)} (${tamano})`,
 			`REQUEST(FULL)`
 		);
 		console.log(mensajeInfoLog);
@@ -95,7 +95,7 @@ export async function fileGetEndpoint(req, res) {
 			"Content-Type": contentType,
 		};
 		res.writeHead(StatusCodes.OK, head);
-		createReadStream(filePath).pipe(res);
+		fs.createReadStream(filePath).pipe(res);
 	}
 }
 

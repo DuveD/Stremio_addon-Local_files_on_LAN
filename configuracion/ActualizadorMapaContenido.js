@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import fs from "fs";
 import Configuracion from "../configuracion/ConfiguracionAplicacion.js";
 import Constantes from "../constantes/ConstantesGenerales.js";
 
@@ -28,9 +28,9 @@ if (!path) {
 
 // Leer JSON existente o inicializar vacío
 let data = {};
-if (existsSync(path)) {
+if (fs.existsSync(path)) {
     try {
-        data = JSON.parse(readFileSync(path, "utf-8"));
+        data = JSON.parse(fs.readFileSync(path, "utf-8"));
     } catch (err) {
         console.error("Error leyendo JSON:", err);
         process.exit(1);
@@ -53,6 +53,6 @@ if (data.hasOwnProperty(imdbId)) {
     // );
 
     // Guardar JSON actualizado
-    writeFileSync(path, JSON.stringify(sortedData, null, 2), "utf-8");
+    fs.writeFileSync(path, JSON.stringify(sortedData, null, 2), "utf-8");
     console.log(`Añadido: ${imdbId} -> ${folderName} (${type})`);
 }

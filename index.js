@@ -29,6 +29,8 @@ Dotenv.config();
 const app = express();
 Configuracion.init();
 
+const PORT = Configuracion.servidor.puerto;
+
 // Manifest mínimo para Stremio
 const manifest = {
 	id: "org.stremioAddon.localFilesOnLan",
@@ -83,17 +85,17 @@ app.get("/stream/:type/:id.json", streamGetEndpoint);
 // Endpoint de archivos con soporte de chunks
 app.get("/file/:filePath", fileGetEndpoint);
 
-const PORT = Configuracion.servidor.puerto;
-
 // Iniciar servidor en todas las interfaces
 app.listen(PORT, "0.0.0.0", () => {
 	const mensajeInfoLog = formatInfoLog(
-		`Addon corriendo en http://localhost:${PORT}/manifest.json`
+		`Addon corriendo en http://localhost:${PORT}/manifest.json`,
+		`START`
 	);
 	console.log(mensajeInfoLog);
 
 	const mensajeInfoLog2 = formatInfoLog(
-		`IP LAN accesible: ${Configuracion.servidor.urlLocal}/manifest.json`
+		`IP LAN accesible: ${Configuracion.servidor.urlLocal}/manifest.json`,
+		`START`
 	);
 	console.log(mensajeInfoLog2);
 });

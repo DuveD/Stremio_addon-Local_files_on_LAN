@@ -1,11 +1,10 @@
-import { execFile } from "child_process";
+import cmd from "child_process";
 import FluentFfmpegPkg from "fluent-ffmpeg";
 import { formatErrorLog } from "../utilidades/UtilidadesLog.js";
-const { setFfprobePath, ffprobe } = FluentFfmpegPkg;
 
-setFfprobePath("ffprobe");
+FluentFfmpegPkg.setFfprobePath("ffprobe");
 
-const EXTENSION_MKV = ".mkv";
+const EXTENSION_MKV = "mkv";
 
 function formatearTamano(bytes) {
 	if (bytes === 0) return "0.00 B";
@@ -41,7 +40,7 @@ async function obtenerMetadatos(filePath) {
 
 function obtenerResolucion(filePath) {
 	return new Promise((resolve) => {
-		ffprobe(filePath, (err, metadata) => {
+		FluentFfmpegPkg.ffprobe(filePath, (err, metadata) => {
 			if (err || !metadata || !metadata.streams) {
 				return resolve({
 					width: null,
@@ -107,7 +106,7 @@ function obtenerIdiomasPistas(filePath) {
 		const args = ["-J", filePath];
 		const options = { maxBuffer: 1024 * 1024 * 10 };
 
-		execFile(command, args, options, (err, stdout) => {
+		cmd.execFile(command, args, options, (err, stdout) => {
 			if (err) return resolve({ audio: [], sub: [] }); // Si falla, devuelve vacío
 
 			try {

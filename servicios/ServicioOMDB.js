@@ -64,5 +64,5 @@ async function obtenerTituloDesdeImdbId(imdbId) {
 }
 
 export default {
-    obtenerTituloDesdeImdbId,
+	obtenerTituloDesdeImdbId
 };

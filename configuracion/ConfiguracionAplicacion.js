@@ -1,15 +1,15 @@
-import { existsSync, readFileSync, writeFileSync } from "fs";
-import { hostname } from "os";
-import Constantes from "../constantes/ConstantesGenerales.js";
+import fs from "fs";
+import os from "os";
+import { Constantes } from "../constantes/ConstantesGenerales.js";
 import { cargarVariable, cargarVariableBoolean } from "../utilidades/UtilidadesEntorno.js";
 import { formatErrorLog, formatInfoLog, formatWarnLog } from "../utilidades/UtilidadesLog.js";
-import { obtenerIPLocal } from "../utilidades/UtilidadesRed.js";
+import UtilidadesRed from "../utilidades/UtilidadesRed.js";
 
 // Configuración Servidor.
 const PUERTO_SERVIDOR = cargarVariable("SERVER_PORT");
-const HOSTNAME = hostname();
+const HOSTNAME = os.hostname();
 const NOMBRE_ADDON = "Local Files on LAN" + (HOSTNAME ? ` [${HOSTNAME}]` : "")
-const IP_LOCAL = obtenerIPLocal();
+const IP_LOCAL = UtilidadesRed.obtenerIPLocal();
 
 // Configuración medios.
 const PATH_CARPETA_SERIES = cargarVariable("PATH_CARPETA_SERIES");
@@ -54,8 +54,8 @@ function cargarMapa(type) {
 
   let mapa = null;
   try {
-    if (existsSync(mediaPath)) {
-      mapa = JSON.parse(readFileSync(mediaPath, "utf8"));
+    if (fs.existsSync(mediaPath)) {
+      mapa = JSON.parse(fs.readFileSync(mediaPath, "utf8"));
       var nEntradas = Object.keys(mapa).length;
 
       const mensajeInfoLog = formatInfoLog(
@@ -83,64 +83,64 @@ function cargarMapa(type) {
 }
 
 function obtenerCarpetaDeMapa(type, imdbId) {
-	if (type === Constantes.CONTENT_TYPE_SERIES)
-		return MAPA_SERIES[imdbId];
-	else if (type === Constantes.CONTENT_TYPE_MOVIE)
-		return MAPA_PELICULAS[imdbId];
-	else
+  if (type === Constantes.CONTENT_TYPE_SERIES)
+    return MAPA_SERIES[imdbId];
+  else if (type === Constantes.CONTENT_TYPE_MOVIE)
+    return MAPA_PELICULAS[imdbId];
+  else
     return null;
 }
 
 async function agregarSerieAMapa(type, imdbId, nombreCarpeta) {
-	let nombreMapa = null;
-	let agregarSerie = null;
-	if (type ===CONTENT_TYPE_SERIES) {
-		nombreMapa = configuracion.medios.pathMapaSeries;
-		agregarSerie = (imdbId, nombreCarpeta) =>
-			(SERIES_MAP[imdbId] = nombreCarpeta);
-	} else if (type ===CONTENT_TYPE_MOVIE) {
-		nombreMapa = configuracion.medios.pathMapaPeliculas;
-		agregarSerie = (imdbId, nombreCarpeta) =>
-			(PELICULAS_MAP[imdbId] = nombreCarpeta);
-	}
+  let nombreMapa = null;
+  let agregarSerie = null;
+  if (type === CONTENT_TYPE_SERIES) {
+    nombreMapa = configuracion.medios.pathMapaSeries;
+    agregarSerie = (imdbId, nombreCarpeta) =>
+      (SERIES_MAP[imdbId] = nombreCarpeta);
+  } else if (type === CONTENT_TYPE_MOVIE) {
+    nombreMapa = configuracion.medios.pathMapaPeliculas;
+    agregarSerie = (imdbId, nombreCarpeta) =>
+      (PELICULAS_MAP[imdbId] = nombreCarpeta);
+  }
 
-	try {
-		let seriesMap = {};
-		if (existsSync(nombreMapa)) {
-			seriesMap = JSON.parse(readFileSync(nombreMapa, "utf8"));
-		}
+  try {
+    let seriesMap = {};
+    if (fs.existsSync(nombreMapa)) {
+      seriesMap = JSON.parse(fs.readFileSync(nombreMapa, "utf8"));
+    }
 
-		if (seriesMap[imdbId]) {
-			const mensajeInfoLog = formatInfoLog(
-				`El imdbId ${imdbId} ya existe en el mapa '${nombreMapa}', no se añadirá de nuevo.`,
-				`IMDB`
-			);
-			console.log(mensajeInfoLog);
+    if (seriesMap[imdbId]) {
+      const mensajeInfoLog = formatInfoLog(
+        `El imdbId ${imdbId} ya existe en el mapa '${nombreMapa}', no se añadirá de nuevo.`,
+        `IMDB`
+      );
+      console.log(mensajeInfoLog);
 
-			return false;
-		}
+      return false;
+    }
 
-		seriesMap[imdbId] = nombreCarpeta;
-		writeFileSync(nombreMapa, JSON.stringify(seriesMap, null, 2), "utf8");
+    seriesMap[imdbId] = nombreCarpeta;
+    fs.writeFileSync(nombreMapa, JSON.stringify(seriesMap, null, 2), "utf8");
 
-		agregarSerie(imdbId, nombreCarpeta);
+    agregarSerie(imdbId, nombreCarpeta);
 
-		const mensajeInfoLog = formatInfoLog(
-			`Se ha añadido la entrada "${nombreCarpeta}" : "${imdbId}" al mapa '${nombreMapa}'.`,
-			`IMDB`
-		);
-		console.log(mensajeInfoLog);
+    const mensajeInfoLog = formatInfoLog(
+      `Se ha añadido la entrada "${nombreCarpeta}" : "${imdbId}" al mapa '${nombreMapa}'.`,
+      `IMDB`
+    );
+    console.log(mensajeInfoLog);
 
-		return true;
-	} catch (err) {
-		const mensajeErrorLog = formatInfoLog(
-			`Error al añadir la entrada "${nombreCarpeta}" : "${imdbId}" al mapa '${nombreMapa}': ${err}`,
-			`IMDB`
-		);
-		console.error(mensajeErrorLog);
+    return true;
+  } catch (err) {
+    const mensajeErrorLog = formatInfoLog(
+      `Error al añadir la entrada "${nombreCarpeta}" : "${imdbId}" al mapa '${nombreMapa}': ${err}`,
+      `IMDB`
+    );
+    console.error(mensajeErrorLog);
 
-		return false;
-	}
+    return false;
+  }
 }
 
 export default {

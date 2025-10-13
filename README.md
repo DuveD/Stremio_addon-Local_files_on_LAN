@@ -16,7 +16,7 @@ Servidor en Node.js para Stremio que sirve contenido alojado en local mediante s
 
 - `index.js` → Archivo principal del servidor.
 - `package.json` y `package-lock.json` → Dependencias del proyecto.
-- `LICENSE` → Licencia del proyecto (ver detalles más abajo).
+- `LICENSE` → Licencia del proyecto (ver sección **Licencia** más abajo).
 
 ### ⚙️ Configuración
 - Directorio `configuracion` → Contiene los archivos con la configuración del servidor y los medios almacenados en local:
@@ -31,7 +31,7 @@ Servidor en Node.js para Stremio que sirve contenido alojado en local mediante s
 - Directorio `servicios` → Contiene la lógica de negocio de aspectos principales del servidor.
 - Directorio `utilidades` → Contiene utilidades del proyecto.
 
-###  Scripts
+### 📃 Scripts
 - Archivos `.bat` → Scripts para abrir túneles HTTPS con Cloudflare, Loophole o Ngrok y exponer el servidor a internet.
 
 ---
