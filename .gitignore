@@ -1,5 +1,34 @@
+##################################################
+# GIT IGNORE OPTIMIZADO PARA ADDON DE STREMIO (NODE.JS / VS CODE)
+##################################################
+
+# 1. Dependencias y Salidas de Compilación
+# Ignora todo lo generado por npm, yarn o el proceso de build.
 node_modules
-build
+/build
+/dist
+/out
+
+# 2. Logs y Archivos de Depuración
+# No deben subirse los logs o archivos temporales de diagnóstico.
 npm-debug.log
-.DS_Store
-.vscode
+yarn-debug.log
+yarn-error.log
+.eslintcache
+*.tgz
+
+# 3. Archivos de Configuración Local y Sistema Operativo
+# Archivos específicos de la máquina o del usuario que no deben compartirse.
+.DS_Store # macOS system files
+Thumbs.db # Windows system files
+.env
+.local
+
+# 4. Visual Studio Code (VS Code)
+# Ignora archivos de sesión, caché y settings específicos de la máquina.
+.vscode/
+# Excepciones: mantenemos archivos clave para compartir la configuración del espacio de trabajo.
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
